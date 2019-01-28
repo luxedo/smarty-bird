@@ -1,0 +1,20 @@
+body {
+  background-color: #DDD;
+  color: #333;
+  font-family: monospace;
+}
+
+a:link, a:visited, a:hover, a:active {
+  color: #333;
+  text-decoration: underline;
+}
+
+.flex {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.footer {
+  text-align: center;
+}
