@@ -22,14 +22,14 @@ import * as draw from './draw.mjs';
 class BlankScreen {
   constructor(game, canvasId) {
     this.game = game;
-    this.p5 = new p5((p5) => {
-      p5.setup = () => {
-        this.canvas = p5.createCanvas(this.game.width, this.game.height);
+    this.p5 = new p5((sketch) => {
+      sketch.setup = () => {
+        this.canvas = sketch.createCanvas(this.game.width, this.game.height);
         this.canvas.parent(canvasId);
-        this.init(p5);
+        this.init(sketch);
       }
-      p5.draw = () => {
-        this.draw(p5)
+      sketch.draw = () => {
+        this.draw(sketch)
       };
     });
   }
@@ -40,8 +40,11 @@ class BlankScreen {
 }
 
 export class MenuScreen extends BlankScreen {
-  init(p5) {
+  init(sketch) {
+    this.i = 0
   }
-  draw(p5) {
+  draw(sketch) {
+    sketch.ellipse(10+this.i, 10+this.i ,30, 40)
+    this.i++;
   }
 }
