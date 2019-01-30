@@ -26,7 +26,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const app = firebase.app();
     const firestore = firebase.firestore();
     const game = new gl.Game(firestore);
-    game.start();
   } catch (e) {
     console.error(e);
   }
