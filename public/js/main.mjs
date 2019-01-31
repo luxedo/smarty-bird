@@ -22,11 +22,46 @@ const VERSION = "v1.0";
 
 document.addEventListener('DOMContentLoaded', function() {
   try {
-    firebase.auth().signInAnonymously();
     const app = firebase.app();
-    const firestore = firebase.firestore();
-    const game = new gl.Game(firestore);
+
+    const uiConfig = {
+      signInSuccessUrl: "/",
+      signInFlow: "redirect",
+      signInOptions: [
+        firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+        firebase.auth.FacebookAuthProvider.PROVIDER_ID,
+      ],
+      privacyPolicyUrl: "/privacy.html"
+    };
+    const ui = new firebaseui.auth.AuthUI(firebase.auth());
+    ui.start(".firebaseui-auth-container", uiConfig);
+
+    firebase.auth().onAuthStateChanged(function(user) {
+      if (user) {
+        db.user = {
+          uid: user.uid,
+          displayName: user.displayName
+        };
+        document.querySelector(".name-div").classList.toggle("display-none");
+        document.querySelector(".name-span").textContent = user.displayName;
+      } else {
+        document.querySelector(".firebaseui-auth-container").classList.toggle("display-none");
+      }
+    }, function(error) {
+      console.log(error);
+    });
   } catch (e) {
     console.error(e);
   }
+
+  const db = firebase.firestore();
+  const game = new gl.Game(db);
 });
+
+window.addEventListener("keydown", function(event) {
+  if ([" ", "ArrowDown", "ArrowLeft", "ArrowRight",
+      "ArrowUp", "End", "Home", "PageDown", "PageUp"
+    ].includes(event.key)) {
+    event.preventDefault();
+  }
+}, false);

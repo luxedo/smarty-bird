@@ -6,7 +6,7 @@
   <meta name="description" content="A reproduction of the game Flappy Bird with a twist">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Smarty Bird</title>
-  <link id="favicon" rel="icon" href="assets/favicon.ico" type="image/x-icon">
+  <link id="favicon" rel="icon" href="assets/favicon.png" type="image/png">
   <meta name="thumbnail" content="https://github.com/luxedo/smarty-bird/raw/master/public/assets/thumbnail.png" />
 
   <!-- twitter -->
@@ -38,6 +38,10 @@
   <!-- initialize the SDK after all desired features are loaded -->
   <script defer src="/__/firebase/init.js"></script>
 
+  <!-- Firebase UI -->
+  <script src="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.js"></script>
+  <link type="text/css" rel="stylesheet" href="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.css" />
+
   <link rel="stylesheet" href="/css/style.css">
 
   <script src="/js/lib/p5.min.js" type="text/javascript"></script>
@@ -48,11 +52,22 @@
 
 <body>
   <div class="container">
-    <div class="flex">
+    <div class="flex" style="margin-top: 2em;">
       <div id="game-box">
+        <div id="p5_loading" class="loadingclass"></div>
       </div>
     </div>
     <div class="footer">
+      <div class="firebaseui-auth-container display-none">
+        <h3>Sign In Before Playing to Submit Scores:</h3>
+      </div>
+      <div class="name-div display-none">
+        <h3>Hello <span class="name-span"></span>!</h3>
+        <h2>r u ready to bird up!?</h2>
+      </div>
+      <!-- <div id="firebaseui-auth-container">
+        <h3>Sign In to Submit Scores:</h3>
+      </div> -->
       <p>
         <a href="https://github.com/luxedo/smarty-bird">
           <img src="assets/GitHub-Mark-32px.png" /><span>Check it on GitHub!</span>

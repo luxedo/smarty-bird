@@ -21,8 +21,9 @@ import * as screens from './screens.mjs';
 
 // Game Class
 export class Game {
-  constructor(firestore) {
-    this.firestore = firestore;
+  constructor(db) {
+    this.db = db;
+    this.collection = "highScores";
     this.fps = 30;
     this.width = 320;
     this.height = 480;
@@ -31,24 +32,42 @@ export class Game {
     this.p5 = new p5((sketch) => {
       this.sketch = sketch;
       this.sketch.preload = () => {
-        // this.font = sketch.loadFont("/assets/FlappyBirdy.ttf")
-        // this.fontSize = 40
+        // this.font = this.sketch.loadFont("/assets/FlappyBirdy.ttf");
+        this.font = this.sketch.loadFont("/assets/pixelmix.ttf");
+        this.fontSize = 11;
+        this.textColor = "#523747";
         this.images = {
           floor: this.sketch.loadImage("/assets/floor.png"),
           background: this.sketch.loadImage("/assets/background.png"),
           pipe: this.sketch.loadImage("/assets/pipe.png"),
-          gameOver: this.sketch.loadImage("/assets/title.png"),
+          gameOver: this.sketch.loadImage("/assets/game_over.png"),
           start: this.sketch.loadImage("/assets/start_button.png"),
           ok: this.sketch.loadImage("/assets/ok_button.png"),
+          submit: this.sketch.loadImage("/assets/submit_button.png"),
+          versus: this.sketch.loadImage("/assets/versus_button.png"),
+          train: this.sketch.loadImage("/assets/train_button.png"),
+          highScores: this.sketch.loadImage("/assets/high_scores_button.png"),
+          credits: this.sketch.loadImage("/assets/credits_button.png"),
           scoreboard: this.sketch.loadImage("/assets/score_box.png"),
-          tap: this.sketch.loadImage("/assets/tap_button.png"),
+          getReady: this.sketch.loadImage("/assets/get_ready.png"),
+          textBox: this.sketch.loadImage("/assets/box.png"),
+          "0": this.sketch.loadImage("/assets/0.png"),
+          "1": this.sketch.loadImage("/assets/1.png"),
+          "2": this.sketch.loadImage("/assets/2.png"),
+          "3": this.sketch.loadImage("/assets/3.png"),
+          "4": this.sketch.loadImage("/assets/4.png"),
+          "5": this.sketch.loadImage("/assets/5.png"),
+          "6": this.sketch.loadImage("/assets/6.png"),
+          "7": this.sketch.loadImage("/assets/7.png"),
+          "8": this.sketch.loadImage("/assets/8.png"),
+          "9": this.sketch.loadImage("/assets/9.png"),
         };
         this.animations = {
           titleAnimation: this.sketch.loadAnimation(
-            // "/assets/title.png",
             "/assets/title_midflap.png",
-            // "/assets/title.png",
-            "/assets/title_upflap.png"
+            "/assets/title_upflap.png",
+            "/assets/title_midflap.png",
+            "/assets/title_downflap.png"
           ),
           birdAnimation: this.sketch.loadAnimation(
             "/assets/midflap.png",
@@ -62,6 +81,10 @@ export class Game {
         this.canvas = this.sketch.createCanvas(this.width, this.height);
         this.canvas.parent(this.canvasId);
         this.sketch.frameRate(this.framerate);
+        this.sketch.textFont(this.font);
+        this.sketch.textSize(this.fontSize);
+        this.sketch.fill(this.textColor);
+        this.sketch.noStroke();
       };
       this.sketch.draw = () => {
         this.update(this.sketch);
