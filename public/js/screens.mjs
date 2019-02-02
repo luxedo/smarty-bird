@@ -65,35 +65,23 @@ class BlankScreen {
 export class MovingScreen extends BlankScreen {
   init(sketch) {
     super.init(sketch);
-
-    this.background = sketch.createSprite(this.game.width / 2, this.game.height / 2, this.game.width, this.game.height);
-    this.background.addImage(this.game.images.background);
-    this.foregroundWidth = 56;
-    this.foregroundHeight = 72;
-    this.foreground = sketch.Group();
-    this.speed = 2;
-    Array.from(Array(Math.ceil(this.game.width / this.foregroundWidth) + 2).keys()).forEach((tile, index) => {
-      const sprite = sketch.createSprite(index * this.foregroundWidth, this.game.height - this.foregroundHeight / 2, this.foregroundWidth, this.foregroundHeight);
-      sprite.setSpeed(this.speed, 180);
-      sprite.addImage(this.game.images.floor);
-      this.foreground.add(sprite);
+    this.game.spriteGroups.foreground.toArray().forEach(tile => {
+      tile.setVelocity(-this.game.speed, 0);
     });
   }
   update(sketch) {
     super.update(sketch);
-
-    const lastTileX = this.foreground.toArray().reduce((acc, tile) => tile.position.x > acc ? tile.position.x : acc, 0);
-    this.foreground.toArray().forEach(tile => {
-      if (tile.position.x < -this.foregroundWidth) {
-        tile.position.x = lastTileX + this.foregroundWidth;
+    const lastTileX = this.game.spriteGroups.foreground.toArray().reduce((acc, tile) => tile.position.x > acc ? tile.position.x : acc, 0);
+    this.game.spriteGroups.foreground.toArray().forEach(tile => {
+      if (tile.position.x < -this.game.images.foreground.width) {
+        tile.position.x = lastTileX + this.game.images.foreground.width;
       }
     });
   }
   draw(sketch) {
     super.draw();
-
-    sketch.drawSprite(this.background);
-    sketch.drawSprites(this.foreground);
+    sketch.drawSprite(this.game.sprites.background);
+    sketch.drawSprites(this.game.spriteGroups.foreground);
   }
 }
 
@@ -102,29 +90,25 @@ export class MenuScreen extends MovingScreen {
     super.init(sketch);
 
     this.titleY = 100;
-    this.title = sketch.createSprite(this.game.width / 2, this.titleY);
-    this.title.addAnimation("title", this.game.animations.titleAnimation);
-    this.title.animation.frameDelay = 10;
+    this.game.sprites.title.position.y = this.titleY;
 
-    this.buttons = "main";
+    this.start = new Button2(this.game.sprites.start);
+    this.start.setY(240);
 
-    this.startY = 240;
-    this.start = new Button(sketch, this.game.width / 2, this.startY, this.game.images.start);
+    this.highScores = new Button2(this.game.sprites.highScores);
+    this.highScores.setY(300);
 
-    this.highScoresY = 300;
-    this.highScores = new Button(sketch, this.game.width / 2, this.highScoresY, this.game.images.highScores);
+    this.credits = new Button2(this.game.sprites.credits);
+    this.credits.setY(360);
 
-    this.creditsY = 360;
-    this.credits = new Button(sketch, this.game.width / 2, this.creditsY, this.game.images.credits);
-
-    this.singleY = 240;
-    this.single = new Button(sketch, this.game.width / 2, this.singleY, this.game.images.start);
-
-    this.versusY = 300;
-    this.versus = new Button(sketch, this.game.width / 2, this.versusY, this.game.images.versus);
-
-    this.trainY = 360;
-    this.train = new Button(sketch, this.game.width / 2, this.trainY, this.game.images.train);
+    // this.singleY = 240;
+    // this.single = new Button(sketch, this.game.width / 2, this.singleY, this.game.images.start);
+    //
+    // this.versusY = 300;
+    // this.versus = new Button(sketch, this.game.width / 2, this.versusY, this.game.images.versus);
+    //
+    // this.trainY = 360;
+    // this.train = new Button(sketch, this.game.width / 2, this.trainY, this.game.images.train);
   }
   update(sketch) {
     super.update(sketch);
@@ -144,11 +128,11 @@ export class MenuScreen extends MovingScreen {
     this.credits.clicked(() => {
       this.fadeOut().then(() => this.game.changeScreen(this.game.screens.creditsScreen));
     });
-    this.title.position.y = this.titleY + 8 * Math.sin(Date.now() / 200);
+    this.game.sprites.title.position.y = this.titleY + 8 * Math.sin(Date.now() / 200);
   }
   draw(sketch) {
     super.draw(sketch);
-    sketch.drawSprite(this.title);
+    sketch.drawSprite(this.game.sprites.title);
     sketch.drawSprite(this.start.sprite);
     sketch.drawSprite(this.highScores.sprite);
     sketch.drawSprite(this.credits.sprite);
@@ -186,24 +170,62 @@ class Button {
   }
 }
 
+class Button2 {
+  constructor(sprite) {
+    this.sprite = sprite;
+    this.sprite.mouseActive = true;
+    this.active = true;
+    this.disabled = false;
+  }
+  setY(y) {
+    this.initialY = y;
+    this.sprite.position.y = y;
+  }
+  update() {
+    if (this.sprite.mouseIsPressed) {
+      this.sprite.position.y = this.initialY + 2;
+    } else {
+      this.sprite.position.y = this.initialY;
+    }
+  }
+  clicked(action) {
+    if (!this.disabled) {
+      if (this.active && this.sprite.mouseIsPressed) {
+        this.active = false;
+        this.sprite.position.y = this.initialY + 2;
+      } else if (!this.active && !this.sprite.mouseIsPressed) {
+        this.disabled = true;
+        action();
+      }
+    }
+  }
+}
+
 export class GameScreen extends MovingScreen {
   init(sketch) {
     super.init(sketch);
 
     this.hovering = true;
 
-    this.pipes = sketch.Group();
+    this.game.spriteGroups.pipes.toArray().forEach(tile => tile.remove());
 
-    this.bird = new Bird(sketch, this.game.width / 4, this.game.height / 7 * 3, 31, 24, this.game.animations.birdAnimation);
+    this.bird = new Bird(this.game.sprites.bird);
+    this.bird.sprite.position.x = this.game.width / 4;
+    this.bird.sprite.position.y = this.game.height / 7 * 3;
+    this.bird.sprite.setVelocity(0, 0);
+    this.bird.sprite.rotation = 0;
     this.bird.sprite.animation.play();
     this.gravity = 12 / this.game.fps;
     this.flapStrength = 6;
 
     this.score = 0;
+
+    if (this.scoreGroup != undefined) {
+      this.scoreGroup.toArray().forEach(number => number.remove());
+    }
     this.scoreGroup = makeNumberGroup(sketch, this.game.images, this.score, this.game.width / 2, 30);
 
-    this.getReady = sketch.createSprite(this.game.width / 2, this.game.height / 5 * 2, 50, 50);
-    this.getReady.addImage(this.game.images.getReady);
+    this.game.sprites.getReady.position.y = this.game.height / 5 * 2;
   }
   update(sketch) {
     super.update(sketch);
@@ -211,18 +233,23 @@ export class GameScreen extends MovingScreen {
     // Update pipes
     if (!this.hovering) {
       const gap = 180;
-      const slit = 100;
+      const slit = 100 + 100*(1 - Math.tanh(this.score/5));
       const pipeWidth = 52;
 
-      const lastPipe = this.pipes.toArray().reduce((acc, pipe) => {
+      const pipesArray = this.game.spriteGroups.pipes.toArray();
+
+      const lastPipe = pipesArray.reduce((acc, pipe) => {
         // Remove old pipes
         if (pipe.position.x < -100) {
-          this.pipes.remove(pipe);
+          this.game.spriteGroups.pipes.remove(pipe);
         }
         // Increase score
         if (!pipe.scored && this.bird.sprite.position.x > pipe.position.x + pipeWidth / 2) {
           pipe.scored = true;
           this.score += 0.5; // Adding 2*0.5 (top and bottom pipes)
+          if (this.scoreGroup != undefined) {
+            this.scoreGroup.toArray().forEach(number => number.remove());
+          }
           this.scoreGroup = makeNumberGroup(sketch, this.game.images, this.score, this.game.width / 2, 20);
         }
         return pipe.position.x > acc.position.x ? pipe : acc;
@@ -234,18 +261,18 @@ export class GameScreen extends MovingScreen {
 
       if (lastPipe.position.x < this.game.width - gap) {
         const pipeHeight = 320;
-        const slitHeight = Math.random() * 160 - 80;
+        const slitHeight = Math.random() * 150 - 130;
         const pipeX = lastPipe.position.x === 0 ? this.game.width + pipeWidth / 2 : lastPipe.position.x + gap + pipeWidth / 2;
         const pipeTop = sketch.createSprite(pipeX, slitHeight, pipeWidth, pipeHeight);
         pipeTop.addImage(this.game.images.pipe);
         pipeTop.mirrorY(-1);
-        pipeTop.setSpeed(this.speed, 180);
-        this.pipes.add(pipeTop);
+        pipeTop.setVelocity(-this.game.speed, 0);
+        this.game.spriteGroups.pipes.add(pipeTop);
 
         const pipeBottom = sketch.createSprite(pipeX, slitHeight + slit + pipeHeight, pipeWidth, pipeHeight);
-        pipeBottom.setSpeed(this.speed, 180);
+        pipeBottom.setVelocity(-this.game.speed, 0);
         pipeBottom.addImage(this.game.images.pipe);
-        this.pipes.add(pipeBottom);
+        this.game.spriteGroups.pipes.add(pipeBottom);
       }
 
       // Update bird
@@ -256,23 +283,23 @@ export class GameScreen extends MovingScreen {
         this.bird.sprite.position.y = borderHeight;
         this.bird.sprite.velocity.y = 0;
       }
-      if (this.pipes.overlap(this.bird.sprite)) {
+      if (this.game.spriteGroups.pipes.overlap(this.bird.sprite)) {
         this.bird.dead = true;
-        this.pipes.toArray().forEach(pipe => {
+        pipesArray.forEach(pipe => {
           pipe.setSpeed(0, 0);
         });
-        this.foreground.toArray().forEach(tile => {
+        this.game.spriteGroups.foreground.toArray().forEach(tile => {
           tile.setSpeed(0, 0);
         });
       }
-      if (this.foreground.overlap(this.bird.sprite)) {
-        this.bird.sprite.position.y = this.game.height - this.foregroundHeight;
+      if (this.game.spriteGroups.foreground.overlap(this.bird.sprite)) {
+        this.bird.sprite.position.y = this.game.height - this.game.images.foreground.height;
         this.bird.sprite.velocity.y = 0;
         this.bird.sprite.animation.stop();
-        this.pipes.toArray().forEach(pipe => {
+        pipesArray.forEach(pipe => {
           pipe.setSpeed(0, 0);
         });
-        this.foreground.toArray().forEach(tile => {
+        this.game.spriteGroups.foreground.toArray().forEach(tile => {
           tile.setSpeed(0, 0);
         });
         this.game.changeScreen(this.game.screens.gameOverScreen, this);
@@ -283,11 +310,11 @@ export class GameScreen extends MovingScreen {
     super.draw(sketch);
 
     sketch.drawSprite(this.background);
-    sketch.drawSprites(this.pipes);
-    sketch.drawSprites(this.foreground);
+    sketch.drawSprites(this.game.spriteGroups.pipes);
+    sketch.drawSprites(this.game.spriteGroups.foreground);
     sketch.drawSprite(this.bird.sprite);
     if (this.hovering) {
-      sketch.drawSprite(this.getReady);
+      sketch.drawSprite(this.game.sprites.getReady);
     }
     sketch.drawSprites(this.scoreGroup);
 
@@ -305,9 +332,8 @@ export class GameScreen extends MovingScreen {
 }
 
 class Bird {
-  constructor(sketch, x, y, w, h, animation) {
-    this.sprite = sketch.createSprite(x, y, w, h);
-    this.sprite.addAnimation("bird", animation);
+  constructor(sprite) {
+    this.sprite = sprite;
     this.sprite.setCollider("circle");
     this.dead = false;
   }
@@ -326,6 +352,8 @@ class Bird {
 
 class GameOverScreen extends BlankScreen {
   init(sketch, previousScreen) {
+    super.init(sketch);
+
     this.previousScreen = previousScreen;
     this.previousScreen.draw(this.game.sketch);
 
@@ -333,34 +361,62 @@ class GameOverScreen extends BlankScreen {
 
     this.scoreboardY = 250;
     this.scoreboardSpeed = 30;
-    this.scoreboard = sketch.createSprite(this.game.width / 2, this.game.height + 300, 240, 130);
-    this.scoreboard.setVelocity(0, -this.scoreboardSpeed);
-    this.scoreboard.addImage(this.game.images.scoreboard);
+    // this.scoreboard = sketch.createSprite(this.game.width / 2, this.game.height + 300, 240, 130);
+    this.game.sprites.scoreboard.position.y = this.game.height * 2;
+    this.game.sprites.scoreboard.setVelocity(0, -this.scoreboardSpeed);
+
+    if (this.scoreGroup != undefined) {
+      this.scoreGroup.toArray().forEach(number => number.remove());
+    }
     this.scoreGroup = makeNumberGroup(sketch, this.game.images, this.previousScreen.score, 97, 260);
+
+    this.showNumbers = false;
     this.best = parseInt(window.localStorage.getItem("best"));
     this.best = this.best > this.previousScreen.score ? this.best : this.previousScreen.score;
-    window.localStorage.setItem("best", this.best);
-    this.bestGroup = makeNumberGroup(sketch, this.game.images, this.best, this.game.width - 102, 260);
+    if (this.game.db.user !== undefined) {
+      this.game.db.collection(this.game.collection).doc(this.game.db.user.uid).get()
+        .then((doc) => {
+          if (doc.exists) {
+            this.best = this.best>doc.data().score?this.best:doc.data().score;
+          }
+          window.localStorage.setItem("best", this.best);
+          if (this.bestGroup != undefined) {
+            this.bestGroup.toArray().forEach(number => number.remove());
+          }
+          this.bestGroup = makeNumberGroup(sketch, this.game.images, this.best, this.game.width - 102, 260);
+        })
+        .catch(function(error) {
+        });
+    }
 
     this.btnY = this.game.height / 4 * 3;
-    this.okButton = new Button(sketch, this.game.width / 4, this.btnY, this.game.images.ok);
-    this.submitButton = new Button(sketch, this.game.width / 4 * 3, this.btnY, this.game.images.submit);
+
+    this.ok = new Button2(this.game.sprites.ok);
+    this.ok.sprite.position.x = this.game.width/4;
+    this.ok.setY(this.btnY);
+
+    this.submit = new Button2(this.game.sprites.submit);
+    this.submit.sprite.position.x = this.game.width/4*3;
+    this.submit.setY(this.btnY);
   }
   update(sketch) {
-    if (this.scoreboard.position.y <= this.scoreboardY) {
-      this.scoreboard.setVelocity(0, 0);
+    if (this.game.sprites.scoreboard.position.y <= this.scoreboardY) {
+      this.game.sprites.scoreboard.setVelocity(0, 0);
       this.showNumbers = true;
     }
 
-    this.okButton.update();
-    this.okButton.clicked(() => {
-      this.fadeOut();
-      this.game.changeScreen(this.game.screens.menuScreen);
+    this.ok.update();
+    this.ok.clicked(() => {
+      this.fadeOut().then(() => {
+        this.game.changeScreen(this.game.screens.menuScreen);
+      });
     });
 
-    this.submitButton.update();
-    this.submitButton.clicked(() => {
-      this.fadeOut();
+    this.submit.update();
+    this.submit.clicked(() => {
+      this.fadeOut().then(() => {
+        this.game.changeScreen(this.game.screens.highScoresScreen);
+      });
       if (this.game.db.user !== undefined) {
         this.game.db.collection(this.game.collection).doc(this.game.db.user.uid).set({
             uid: this.game.db.user.uid,
@@ -376,61 +432,61 @@ class GameOverScreen extends BlankScreen {
       } else {
         // Gotta login buddy
       }
-      setTimeout(() => {
-        this.game.changeScreen(this.game.screens.highScoresScreen);
-      }, 100);
     });
   }
   draw(sketch) {
     super.draw(sketch);
 
-    sketch.drawSprite(this.previousScreen.background);
-    sketch.drawSprites(this.previousScreen.pipes);
-    sketch.drawSprites(this.previousScreen.foreground);
-    sketch.drawSprite(this.previousScreen.bird.sprite);
-
-    sketch.drawSprite(this.scoreboard);
+    sketch.drawSprite(this.game.sprites.background);
+    sketch.drawSprites(this.game.spriteGroups.pipes);
+    sketch.drawSprites(this.game.spriteGroups.foreground);
+    sketch.drawSprite(this.game.sprites.bird);
+    //
+    sketch.drawSprite(this.game.sprites.scoreboard);
     if (this.showNumbers) {
       sketch.drawSprites(this.scoreGroup);
-      sketch.drawSprites(this.bestGroup);
+      if (this.bestGroup != undefined) {
+        sketch.drawSprites(this.bestGroup);
+      }
     }
-    sketch.drawSprite(this.okButton.sprite);
-    sketch.drawSprite(this.submitButton.sprite);
-    sketch.drawSprite(this.title);
-    sketch.tint(255, this.opacity);
+    sketch.drawSprite(this.ok.sprite);
+    sketch.drawSprite(this.submit.sprite);
+
     if (this.opacity < 255) {
+      sketch.tint(255, this.opacity);
       this.opacity += 8;
     }
     sketch.image(this.game.images.gameOver, this.game.width / 2 - this.game.images.gameOver.width / 2, 70);
+    this.checkFadeOut(sketch);
   }
 }
 
 class InfoScreen extends MovingScreen {
   init(sketch) {
     super.init(sketch);
-    this.okButton = new Button(sketch, this.game.width / 2, this.game.height - 50, this.game.images.ok);
+
+    this.ok = new Button2(this.game.sprites.ok);
+    // this.ok.sprite.position.x = this.game.width/4;
+    this.ok.setY(455);
 
     this.titleY = 60;
-    this.title = sketch.createSprite(this.game.width / 2, this.titleY);
-    this.title.addAnimation("title", this.game.animations.titleAnimation);
-    this.title.animation.frameDelay = 10;
+    this.game.sprites.title.position.y = this.titleY;
 
-    this.box = sketch.createSprite(this.game.width / 2, this.game.height/2 + 20);
-    this.box.addImage(this.game.images.textBox);
+    this.game.sprites.textBox.position.y = this.game.height/2 + 30;
   }
   update(sketch) {
     super.update(sketch);
 
-    this.okButton.update();
-    this.okButton.clicked(() => {
+    this.ok.update();
+    this.ok.clicked(() => {
       this.fadeOut().then(() => this.game.changeScreen(this.game.screens.menuScreen));
     });
   }
   draw(sketch) {
     super.draw(sketch);
-    sketch.drawSprite(this.okButton.sprite);
-    sketch.drawSprite(this.title);
-    sketch.drawSprite(this.box);
+    sketch.drawSprite(this.ok.sprite);
+    sketch.drawSprite(this.game.sprites.title);
+    sketch.drawSprite(this.game.sprites.textBox);
   }
 }
 
@@ -451,7 +507,6 @@ class HighScoresScreen extends InfoScreen {
           }
         });
       });
-    this.ordinal = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th", "10th"];
   }
   update(sketch) {
     super.update(sketch);
@@ -461,24 +516,18 @@ class HighScoresScreen extends InfoScreen {
     if (this.data == undefined) {
       sketch.text(`Loading...`, this.game.width/2-40, this.game.height/2);
     } else {
-      this.ordinal.map((ord, index) => {
-        const item = this.data[index];
-        if (this.game.db.user !== undefined && this.game.db.user.uid == item.uid) {
-          sketch.fill(255, 0, 0, 40);
-          sketch.rect(30, 213+(index-1)*16, 260, 17);
-          sketch.fill(this.game.textColor);
+      this.data.map((item, index) => {
+        if (index < 10 || (this.game.db.user !== undefined && this.game.db.user.uid == item.uid)) {
+          const ord = ordinalSuffixOf(index+1);
+          if (this.game.db.user !== undefined && this.game.db.user.uid == item.uid) {
+            sketch.fill(255, 0, 0, 40);
+            sketch.rect(30, 213+(index-1)*16, 260, 17);
+            sketch.fill(this.game.textColor);
+          }
+          sketch.text(`${ord} - ${item.displayName}`, this.game.width/8, 210+index*16);
+          sketch.text(`${item.score}`, this.game.width/8*6.5, 210+index*16);
         }
-        sketch.text(`${ord} - ${item.displayName}`, this.game.width/8, 210+index*16);
-        sketch.text(`${item.score}`, this.game.width/8*6.5, 210+index*16);
       });
-    }
-
-    if (this.playerPosition > 10) {
-      sketch.fill(255, 0, 0, 40);
-      sketch.rect(30, 367, 260, 17);
-      sketch.fill(this.game.textColor);
-      sketch.text(`${this.playerPosition} - ${this.playerDisplayName}`, this.game.width/8, 380);
-      sketch.text(`${this.playerScore}`, this.game.width/8*6.5, 380);
     }
 
     this.checkFadeIn(sketch);
@@ -529,4 +578,19 @@ function makeNumberGroup(sketch, images, number, x, y) {
     group.add(sprite);
   });
   return group;
+}
+
+function ordinalSuffixOf(number) {
+    var unity = number % 10,
+        ten = number % 100;
+    if (unity == 1 && ten != 11) {
+        return number + "st";
+    }
+    if (unity == 2 && ten != 12) {
+        return number + "nd";
+    }
+    if (unity == 3 && ten != 13) {
+        return number + "rd";
+    }
+    return number + "th";
 }

@@ -27,6 +27,7 @@ export class Game {
     this.fps = 30;
     this.width = 320;
     this.height = 480;
+    this.speed = 2;
     this.canvasId = "game-box";
     this.sketch = null;
     this.p5 = new p5((sketch) => {
@@ -37,7 +38,7 @@ export class Game {
         this.fontSize = 11;
         this.textColor = "#523747";
         this.images = {
-          floor: this.sketch.loadImage("/assets/floor.png"),
+          foreground: this.sketch.loadImage("/assets/floor.png"),
           background: this.sketch.loadImage("/assets/background.png"),
           pipe: this.sketch.loadImage("/assets/pipe.png"),
           gameOver: this.sketch.loadImage("/assets/game_over.png"),
@@ -63,19 +64,25 @@ export class Game {
           "9": this.sketch.loadImage("/assets/9.png"),
         };
         this.animations = {
-          titleAnimation: this.sketch.loadAnimation(
+          title: this.sketch.loadAnimation(
             "/assets/title_midflap.png",
             "/assets/title_upflap.png",
             "/assets/title_midflap.png",
             "/assets/title_downflap.png"
           ),
-          birdAnimation: this.sketch.loadAnimation(
+          bird: this.sketch.loadAnimation(
             "/assets/midflap.png",
-            "/assets/upflap.png"
+            "/assets/upflap.png",
+            "/assets/midflap.png",
+            "/assets/downflap.png"
+          ),
+          glasses: this.sketch.loadAnimation(
+            "/assets/midflap_oculos.png",
+            "/assets/upflap_oculos.png",
+            "/assets/midflap_oculos.png",
+            "/assets/downflap_oculos.png"
           )
         };
-        this.animations.titleAnimation.frameDelay = 10;
-        this.start();
       };
       this.sketch.setup = () => {
         this.canvas = this.sketch.createCanvas(this.width, this.height);
@@ -85,6 +92,56 @@ export class Game {
         this.sketch.textSize(this.fontSize);
         this.sketch.fill(this.textColor);
         this.sketch.noStroke();
+
+        this.sprites = {
+          background: this.sketch.createSprite(this.width / 2, this.height / 2),
+          title: this.sketch.createSprite(this.width / 2, 0),
+          start: this.sketch.createSprite(this.width / 2, 0),
+          highScores: this.sketch.createSprite(this.width / 2, 0),
+          credits: this.sketch.createSprite(this.width / 2, 0),
+          bird: this.sketch.createSprite(0, 0),
+          getReady: this.sketch.createSprite(this.width / 2, 0),
+          scoreboard: this.sketch.createSprite(this.width / 2, 0),
+          ok: this.sketch.createSprite(this.width / 2, 0),
+          submit: this.sketch.createSprite(this.width / 2, 0),
+          textBox: this.sketch.createSprite(this.width / 2, 0),
+        };
+        this.sprites.background.addImage(this.images.background);
+        this.sprites.title.addAnimation("title", this.animations.title);
+        this.sprites.title.animation.frameDelay = 10;
+        this.sprites.start.addImage(this.images.start);
+        this.sprites.highScores.addImage(this.images.highScores);
+        this.sprites.credits.addImage(this.images.credits);
+        this.sprites.bird.addAnimation("bird", this.animations.bird);
+        this.sprites.title.animation.frameDelay = 5;
+        this.sprites.getReady.addImage(this.images.getReady);
+        this.sprites.scoreboard.addImage(this.images.scoreboard);
+        this.sprites.ok.addImage(this.images.ok);
+        this.sprites.submit.addImage(this.images.submit);
+        this.sprites.textBox.addImage(this.images.textBox);
+
+
+        this.spriteGroups = {
+          foreground: new this.sketch.Group(),
+          pipes: new this.sketch.Group(),
+        };
+
+        // this.spriteClasses = {
+          // start: new Button(0, 0, this.game.images.start)
+        // };
+
+        for (let i = 0; i<(this.width/this.images.foreground.width)+2; i++) {
+          const sprite = sketch.createSprite(0, 0);
+          sprite.addImage(this.images.foreground);
+          sprite.position.x = (i+1/2)*sprite.width;
+          sprite.position.y = this.height-sprite.height/2;
+          this.spriteGroups.foreground.add(sprite);
+        }
+
+        this.animations.title.frameDelay = 10;
+
+        this.start();
+
       };
       this.sketch.draw = () => {
         this.update(this.sketch);
