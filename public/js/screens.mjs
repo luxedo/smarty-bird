@@ -27,7 +27,7 @@ class BlankScreen {
   }
   update(sketch) {
   }
-  draw() {}
+  draw(sketch) {}
   updateDom() {}
   keyPressed() {}
   mouseClicked() {}
@@ -92,23 +92,17 @@ export class MenuScreen extends MovingScreen {
     this.titleY = 100;
     this.game.sprites.title.position.y = this.titleY;
 
-    this.start = new Button2(this.game.sprites.start);
-    this.start.setY(240);
+    this.start = new Button(this.game.sprites.start);
+    this.start.setY(220);
 
-    this.highScores = new Button2(this.game.sprites.highScores);
-    this.highScores.setY(300);
+    this.train = new Button(this.game.sprites.train);
+    this.train.setY(270);
 
-    this.credits = new Button2(this.game.sprites.credits);
-    this.credits.setY(360);
+    this.highScores = new Button(this.game.sprites.highScores);
+    this.highScores.setY(320);
 
-    // this.singleY = 240;
-    // this.single = new Button(sketch, this.game.width / 2, this.singleY, this.game.images.start);
-    //
-    // this.versusY = 300;
-    // this.versus = new Button(sketch, this.game.width / 2, this.versusY, this.game.images.versus);
-    //
-    // this.trainY = 360;
-    // this.train = new Button(sketch, this.game.width / 2, this.trainY, this.game.images.train);
+    this.credits = new Button(this.game.sprites.credits);
+    this.credits.setY(370);
   }
   update(sketch) {
     super.update(sketch);
@@ -116,6 +110,11 @@ export class MenuScreen extends MovingScreen {
     this.start.update();
     this.start.clicked(() => {
       this.fadeOut().then(() => this.game.changeScreen(this.game.screens.gameScreen));
+    });
+
+    this.train.update();
+    this.train.clicked(() => {
+      this.fadeOut().then(() => this.game.changeScreen(this.game.screens.trainScreen));
     });
 
     this.highScores.update();
@@ -134,6 +133,7 @@ export class MenuScreen extends MovingScreen {
     super.draw(sketch);
     sketch.drawSprite(this.game.sprites.title);
     sketch.drawSprite(this.start.sprite);
+    sketch.drawSprite(this.train.sprite);
     sketch.drawSprite(this.highScores.sprite);
     sketch.drawSprite(this.credits.sprite);
     this.checkFadeIn(sketch);
@@ -142,35 +142,6 @@ export class MenuScreen extends MovingScreen {
 }
 
 class Button {
-  constructor(sketch, x, y, image) {
-    this.sprite = sketch.createSprite(x, y);
-    this.initialY = y;
-    this.sprite.mouseActive = true;
-    this.sprite.addImage(image);
-    this.active = true;
-    this.disabled = false;
-  }
-  update() {
-    if (this.sprite.mouseIsPressed) {
-      this.sprite.position.y = this.initialY + 2;
-    } else {
-      this.sprite.position.y = this.initialY;
-    }
-  }
-  clicked(action) {
-    if (!this.disabled) {
-      if (this.active && this.sprite.mouseIsPressed) {
-        this.active = false;
-        this.sprite.position.y = this.initialY + 2;
-      } else if (!this.active && !this.sprite.mouseIsPressed) {
-        this.disabled = true;
-        action();
-      }
-    }
-  }
-}
-
-class Button2 {
   constructor(sprite) {
     this.sprite = sprite;
     this.sprite.mouseActive = true;
@@ -207,7 +178,7 @@ export class GameScreen extends MovingScreen {
 
     this.hovering = true;
 
-    this.game.spriteGroups.pipes.toArray().forEach(tile => tile.remove());
+    this.game.spriteGroups.pipes.removeSprites();
 
     this.bird = new Bird(this.game.sprites.bird);
     this.bird.sprite.position.x = this.game.width / 4;
@@ -219,11 +190,6 @@ export class GameScreen extends MovingScreen {
     this.flapStrength = 6;
 
     this.score = 0;
-
-    if (this.scoreGroup != undefined) {
-      this.scoreGroup.toArray().forEach(number => number.remove());
-    }
-    this.scoreGroup = makeNumberGroup(sketch, this.game.images, this.score, this.game.width / 2, 30);
 
     this.game.sprites.getReady.position.y = this.game.height / 5 * 2;
   }
@@ -242,15 +208,12 @@ export class GameScreen extends MovingScreen {
         // Remove old pipes
         if (pipe.position.x < -100) {
           this.game.spriteGroups.pipes.remove(pipe);
+          pipe.remove();
         }
         // Increase score
         if (!pipe.scored && this.bird.sprite.position.x > pipe.position.x + pipeWidth / 2) {
           pipe.scored = true;
           this.score += 0.5; // Adding 2*0.5 (top and bottom pipes)
-          if (this.scoreGroup != undefined) {
-            this.scoreGroup.toArray().forEach(number => number.remove());
-          }
-          this.scoreGroup = makeNumberGroup(sketch, this.game.images, this.score, this.game.width / 2, 20);
         }
         return pipe.position.x > acc.position.x ? pipe : acc;
       }, {
@@ -316,7 +279,8 @@ export class GameScreen extends MovingScreen {
     if (this.hovering) {
       sketch.drawSprite(this.game.sprites.getReady);
     }
-    sketch.drawSprites(this.scoreGroup);
+
+    drawNumber(sketch, this.score, this.game.width/2, 30, this.game.images.digits);
 
     this.checkFadeIn(sketch);
     this.checkFadeOut(sketch);
@@ -358,17 +322,18 @@ class GameOverScreen extends BlankScreen {
     this.previousScreen.draw(this.game.sketch);
 
     this.opacity = 0;
+    this.gray = 0;
+
+    this.game.sprites.blood.animation.rewind();
+    this.game.sprites.blood.position.x = this.game.sprites.bird.position.x;
+    this.game.sprites.blood.position.y = this.game.sprites.bird.position.y+27;
+    this.game.sprites.blood.animation.play();
 
     this.scoreboardY = 250;
     this.scoreboardSpeed = 30;
     // this.scoreboard = sketch.createSprite(this.game.width / 2, this.game.height + 300, 240, 130);
     this.game.sprites.scoreboard.position.y = this.game.height * 2;
     this.game.sprites.scoreboard.setVelocity(0, -this.scoreboardSpeed);
-
-    if (this.scoreGroup != undefined) {
-      this.scoreGroup.toArray().forEach(number => number.remove());
-    }
-    this.scoreGroup = makeNumberGroup(sketch, this.game.images, this.previousScreen.score, 97, 260);
 
     this.showNumbers = false;
     this.best = parseInt(window.localStorage.getItem("best"));
@@ -380,10 +345,6 @@ class GameOverScreen extends BlankScreen {
             this.best = this.best>doc.data().score?this.best:doc.data().score;
           }
           window.localStorage.setItem("best", this.best);
-          if (this.bestGroup != undefined) {
-            this.bestGroup.toArray().forEach(number => number.remove());
-          }
-          this.bestGroup = makeNumberGroup(sketch, this.game.images, this.best, this.game.width - 102, 260);
         })
         .catch(function(error) {
         });
@@ -391,11 +352,11 @@ class GameOverScreen extends BlankScreen {
 
     this.btnY = this.game.height / 4 * 3;
 
-    this.ok = new Button2(this.game.sprites.ok);
+    this.ok = new Button(this.game.sprites.ok);
     this.ok.sprite.position.x = this.game.width/4;
     this.ok.setY(this.btnY);
 
-    this.submit = new Button2(this.game.sprites.submit);
+    this.submit = new Button(this.game.sprites.submit);
     this.submit.sprite.position.x = this.game.width/4*3;
     this.submit.setY(this.btnY);
   }
@@ -441,13 +402,17 @@ class GameOverScreen extends BlankScreen {
     sketch.drawSprites(this.game.spriteGroups.pipes);
     sketch.drawSprites(this.game.spriteGroups.foreground);
     sketch.drawSprite(this.game.sprites.bird);
-    //
+
+    sketch.filter(sketch.GRAY);
+
+    sketch.drawSprite(this.game.sprites.blood);
+
+
+
     sketch.drawSprite(this.game.sprites.scoreboard);
     if (this.showNumbers) {
-      sketch.drawSprites(this.scoreGroup);
-      if (this.bestGroup != undefined) {
-        sketch.drawSprites(this.bestGroup);
-      }
+      drawNumber(sketch, this.previousScreen.score, 97, 230,this.game.images.digits);
+      drawNumber(sketch, this.best, this.game.width-102, 230,this.game.images.digits);
     }
     sketch.drawSprite(this.ok.sprite);
     sketch.drawSprite(this.submit.sprite);
@@ -456,7 +421,12 @@ class GameOverScreen extends BlankScreen {
       sketch.tint(255, this.opacity);
       this.opacity += 8;
     }
+
+    if (this.gray < 255) {
+      this.gray += 3;
+    }
     sketch.image(this.game.images.gameOver, this.game.width / 2 - this.game.images.gameOver.width / 2, 70);
+
     this.checkFadeOut(sketch);
   }
 }
@@ -465,7 +435,7 @@ class InfoScreen extends MovingScreen {
   init(sketch) {
     super.init(sketch);
 
-    this.ok = new Button2(this.game.sprites.ok);
+    this.ok = new Button(this.game.sprites.ok);
     // this.ok.sprite.position.x = this.game.width/4;
     this.ok.setY(455);
 
@@ -544,11 +514,26 @@ class CreditsScreen extends InfoScreen {
   }
   draw(sketch) {
     super.draw(sketch);
-    sketch.text(`This is a copy of the game "Flappy`, this.game.width/11, 140);
-    sketch.text(`Bird" with a genetic deep neural`, this.game.width/11, 153);
-    sketch.text(`network AI, made by Luxedo and`, this.game.width/11, 166);
-    sketch.text(`Faifos.`, this.game.width/11, 179);
-    sketch.text(`Thanks to the playtesters ...`, this.game.width/11, 200);
+    sketch.text(`This is a copy of the game "Flappy`, this.game.width/11, 150);
+    sketch.text(`Bird" with a genetic deep neural`, this.game.width/11, 163);
+    sketch.text(`network AI, made by Luxedo and`, this.game.width/11, 176);
+    sketch.text(`Faifos.`, this.game.width/11, 189);
+    sketch.text(`Thanks to the playtesters ...`, this.game.width/11, 210);
+
+    this.checkFadeIn(sketch);
+    this.checkFadeOut(sketch);
+  }
+}
+
+class TrainScreen extends MovingScreen {
+  init(sketch) {
+    super.init(sketch);
+  }
+  update(sketch) {
+    super.update(sketch);
+  }
+  draw(sketch) {
+    super.draw(sketch);
 
     this.checkFadeIn(sketch);
     this.checkFadeOut(sketch);
@@ -564,20 +549,19 @@ export function screens(game) {
     gameOverScreen: new GameOverScreen(game),
     highScoresScreen: new HighScoresScreen(game),
     creditsScreen: new CreditsScreen(game),
+    trainScreen: new TrainScreen(game),
   };
 }
 
-function makeNumberGroup(sketch, images, number, x, y) {
+function drawNumber(sketch, number, x, y, images) {
   number = Math.round(number).toString().split("");
+  const numberWidth = images[0].width;
   const spacing = 30;
   const half = number.length / 2;
-  const group = sketch.Group();
   number.forEach((digit, index) => {
-    const sprite = sketch.createSprite(x - (half - 0.5 - index) * spacing, y, 27, 34);
-    sprite.addImage(images[digit]);
-    group.add(sprite);
+    digit = parseInt(digit);
+    sketch.image(images[parseInt(digit)], x - (half - 0.5 - index) * spacing - numberWidth/2, y);
   });
-  return group;
 }
 
 function ordinalSuffixOf(number) {

@@ -52,16 +52,7 @@ export class Game {
           scoreboard: this.sketch.loadImage("/assets/score_box.png"),
           getReady: this.sketch.loadImage("/assets/get_ready.png"),
           textBox: this.sketch.loadImage("/assets/box.png"),
-          "0": this.sketch.loadImage("/assets/0.png"),
-          "1": this.sketch.loadImage("/assets/1.png"),
-          "2": this.sketch.loadImage("/assets/2.png"),
-          "3": this.sketch.loadImage("/assets/3.png"),
-          "4": this.sketch.loadImage("/assets/4.png"),
-          "5": this.sketch.loadImage("/assets/5.png"),
-          "6": this.sketch.loadImage("/assets/6.png"),
-          "7": this.sketch.loadImage("/assets/7.png"),
-          "8": this.sketch.loadImage("/assets/8.png"),
-          "9": this.sketch.loadImage("/assets/9.png"),
+          digits: new Array(10).fill(0).map((_, idx) => this.sketch.loadImage(`/assets/${idx}.png`)),
         };
         this.animations = {
           title: this.sketch.loadAnimation(
@@ -81,6 +72,11 @@ export class Game {
             "/assets/upflap_oculos.png",
             "/assets/midflap_oculos.png",
             "/assets/downflap_oculos.png"
+          ),
+          blood: this.sketch.loadAnimation(
+            "/assets/blood1.png",
+            "/assets/blood2.png",
+            "/assets/blood3.png"
           )
         };
       };
@@ -97,6 +93,7 @@ export class Game {
           background: this.sketch.createSprite(this.width / 2, this.height / 2),
           title: this.sketch.createSprite(this.width / 2, 0),
           start: this.sketch.createSprite(this.width / 2, 0),
+          train: this.sketch.createSprite(this.width / 2, 0),
           highScores: this.sketch.createSprite(this.width / 2, 0),
           credits: this.sketch.createSprite(this.width / 2, 0),
           bird: this.sketch.createSprite(0, 0),
@@ -105,21 +102,25 @@ export class Game {
           ok: this.sketch.createSprite(this.width / 2, 0),
           submit: this.sketch.createSprite(this.width / 2, 0),
           textBox: this.sketch.createSprite(this.width / 2, 0),
+          blood: this.sketch.createSprite(0, 0),
         };
         this.sprites.background.addImage(this.images.background);
         this.sprites.title.addAnimation("title", this.animations.title);
         this.sprites.title.animation.frameDelay = 10;
         this.sprites.start.addImage(this.images.start);
+        this.sprites.train.addImage(this.images.train);
         this.sprites.highScores.addImage(this.images.highScores);
         this.sprites.credits.addImage(this.images.credits);
         this.sprites.bird.addAnimation("bird", this.animations.bird);
-        this.sprites.title.animation.frameDelay = 5;
+        this.sprites.bird.animation.frameDelay = 5;
         this.sprites.getReady.addImage(this.images.getReady);
         this.sprites.scoreboard.addImage(this.images.scoreboard);
         this.sprites.ok.addImage(this.images.ok);
         this.sprites.submit.addImage(this.images.submit);
         this.sprites.textBox.addImage(this.images.textBox);
-
+        this.sprites.blood.addAnimation("blood", this.animations.blood);
+        this.sprites.blood.animation.frameDelay = 40;
+        this.sprites.blood.animation.looping = false;
 
         this.spriteGroups = {
           foreground: new this.sketch.Group(),
