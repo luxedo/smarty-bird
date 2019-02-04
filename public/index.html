@@ -43,7 +43,6 @@
   <link type="text/css" rel="stylesheet" href="https://cdn.firebase.com/libs/firebaseui/3.5.2/firebaseui.css" />
 
   <link rel="stylesheet" href="/css/style.css">
-
 </head>
 
 <body>
@@ -53,17 +52,22 @@
         <div id="p5_loading" class="loadingclass"></div>
       </div>
     </div>
-    <div class="footer">
+    <div class="login center">
       <div class="firebaseui-auth-container display-none">
         <h3>Sign In Before Playing to Submit Scores:</h3>
       </div>
       <div class="name-div display-none">
         <h3>Hello <span class="name-span"></span>!</h3>
         <h2>r u ready to bird up!?</h2>
+        <p>
+          <a href="#" onclick="logoff();">logoff</a>
+        </p>
       </div>
-      <!-- <div id="firebaseui-auth-container">
-        <h3>Sign In to Submit Scores:</h3>
-      </div> -->
+      <div class="pending-div display-none">
+        <h3>Signing in...</h3>
+      </div>
+    </div>
+    <div class="footer center">
       <p>
         <a href="https://github.com/luxedo/smarty-bird">
           <img src="assets/GitHub-Mark-32px.png" /><span>Check it on GitHub!</span>
@@ -83,6 +87,7 @@
     </div>
   </div>
   <script src="/js/lib/p5.min.js" type="text/javascript"></script>
+  <script src="/js/lib/p5.sound.min.js" type="text/javascript"></script>
   <script src="/js/lib/p5.play.js" type="text/javascript"></script>
   <script type="module" src="/js/main.mjs"></script>
 </body>

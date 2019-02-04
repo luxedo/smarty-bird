@@ -36,26 +36,39 @@ document.addEventListener('DOMContentLoaded', function() {
     const ui = new firebaseui.auth.AuthUI(firebase.auth());
     ui.start(".firebaseui-auth-container", uiConfig);
 
-    firebase.auth().onAuthStateChanged(function(user) {
-      if (user) {
-        db.user = {
-          uid: user.uid,
-          displayName: user.displayName
-        };
+    if (ui.isPendingRedirect()) {
+      document.querySelector(".pending-div").classList.toggle("display-none");
+    } else {
+      firebase.auth().onAuthStateChanged(function(user) {
+        if (user) {
+          db.user = {
+            uid: user.uid,
+            displayName: user.displayName
+          };
+          document.querySelector(".name-div").classList.toggle("display-none");
+          document.querySelector(".name-span").textContent = user.displayName;
+        } else {
+          document.querySelector(".firebaseui-auth-container").classList.toggle("display-none");
+        }
+      }, function(error) {
+        console.log(error);
+      });
+      const db = firebase.firestore();
+      const game = new gl.Game(db);
+
+      window.logoff = () => {
         document.querySelector(".name-div").classList.toggle("display-none");
-        document.querySelector(".name-span").textContent = user.displayName;
-      } else {
-        document.querySelector(".firebaseui-auth-container").classList.toggle("display-none");
-      }
-    }, function(error) {
-      console.log(error);
-    });
+        firebase.auth().signOut().then(() => {
+          // Sign-out successful.
+        },
+        (error) => {
+          // An error happened.
+        });
+      };
+    }
   } catch (e) {
     console.error(e);
   }
-
-  const db = firebase.firestore();
-  const game = new gl.Game(db);
 });
 
 window.addEventListener("keydown", function(event) {

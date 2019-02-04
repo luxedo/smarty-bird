@@ -20,15 +20,10 @@ a:link, a:visited, a:hover, a:active {
   justify-content: center;
 }
 
-.footer {
+.center {
   text-align: center;
 }
 
 .display-none {
   display: none;
-}
-
-@font-face {
-  font-family: "flappy";
-  src: url("/assets/FlappyBirdy.ttf") format("truetype");
 }

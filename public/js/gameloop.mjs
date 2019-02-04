@@ -48,6 +48,7 @@ export class Game {
           versus: this.sketch.loadImage("/assets/versus_button.png"),
           train: this.sketch.loadImage("/assets/train_button.png"),
           highScores: this.sketch.loadImage("/assets/high_scores_button.png"),
+          highScoresTitle: this.sketch.loadImage("/assets/high_scores_title.png"),
           credits: this.sketch.loadImage("/assets/credits_button.png"),
           scoreboard: this.sketch.loadImage("/assets/score_box.png"),
           getReady: this.sketch.loadImage("/assets/get_ready.png"),
@@ -79,6 +80,14 @@ export class Game {
             "/assets/blood3.png"
           )
         };
+        this.sounds = {
+          // https://www.sounds-resource.com/mobile/flappybird/sound/5309/
+          die: this.sketch.loadSound('assets/sfx_die.wav'),
+          hit: this.sketch.loadSound('assets/sfx_hit.wav'),
+          point: this.sketch.loadSound('assets/sfx_point.wav'),
+          swooshing: this.sketch.loadSound('assets/sfx_swooshing.wav'),
+          wing: this.sketch.loadSound('assets/sfx_wing.wav'),
+        };
       };
       this.sketch.setup = () => {
         this.canvas = this.sketch.createCanvas(this.width, this.height);
@@ -95,6 +104,7 @@ export class Game {
           start: this.sketch.createSprite(this.width / 2, 0),
           train: this.sketch.createSprite(this.width / 2, 0),
           highScores: this.sketch.createSprite(this.width / 2, 0),
+          highScoresTitle: this.sketch.createSprite(this.width / 2, 0),
           credits: this.sketch.createSprite(this.width / 2, 0),
           bird: this.sketch.createSprite(0, 0),
           getReady: this.sketch.createSprite(this.width / 2, 0),
@@ -110,6 +120,7 @@ export class Game {
         this.sprites.start.addImage(this.images.start);
         this.sprites.train.addImage(this.images.train);
         this.sprites.highScores.addImage(this.images.highScores);
+        this.sprites.highScoresTitle.addImage(this.images.highScoresTitle);
         this.sprites.credits.addImage(this.images.credits);
         this.sprites.bird.addAnimation("bird", this.animations.bird);
         this.sprites.bird.animation.frameDelay = 5;
@@ -119,17 +130,13 @@ export class Game {
         this.sprites.submit.addImage(this.images.submit);
         this.sprites.textBox.addImage(this.images.textBox);
         this.sprites.blood.addAnimation("blood", this.animations.blood);
-        this.sprites.blood.animation.frameDelay = 40;
+        this.sprites.blood.animation.frameDelay = 30;
         this.sprites.blood.animation.looping = false;
 
         this.spriteGroups = {
           foreground: new this.sketch.Group(),
           pipes: new this.sketch.Group(),
         };
-
-        // this.spriteClasses = {
-          // start: new Button(0, 0, this.game.images.start)
-        // };
 
         for (let i = 0; i<(this.width/this.images.foreground.width)+2; i++) {
           const sprite = sketch.createSprite(0, 0);
@@ -138,8 +145,6 @@ export class Game {
           sprite.position.y = this.height-sprite.height/2;
           this.spriteGroups.foreground.add(sprite);
         }
-
-        this.animations.title.frameDelay = 10;
 
         this.start();
 
