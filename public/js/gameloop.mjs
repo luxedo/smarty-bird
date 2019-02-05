@@ -27,7 +27,10 @@ export class Game {
     this.fps = 30;
     this.width = 320;
     this.height = 480;
+    this.gravity = 0.4;
     this.speed = 2;
+    this.maxFlock = 30;
+    this.weightsVariance = 0.001;
     this.canvasId = "game-box";
     this.sketch = null;
     this.p5 = new p5((sketch) => {
@@ -44,6 +47,8 @@ export class Game {
           gameOver: this.sketch.loadImage("/assets/game_over.png"),
           start: this.sketch.loadImage("/assets/start_button.png"),
           ok: this.sketch.loadImage("/assets/ok_button.png"),
+          legend: this.sketch.loadImage("/assets/ok_button.png"),
+          back: this.sketch.loadImage("/assets/ok_button.png"),
           submit: this.sketch.loadImage("/assets/submit_button.png"),
           versus: this.sketch.loadImage("/assets/versus_button.png"),
           train: this.sketch.loadImage("/assets/train_button.png"),
@@ -110,6 +115,8 @@ export class Game {
           getReady: this.sketch.createSprite(this.width / 2, 0),
           scoreboard: this.sketch.createSprite(this.width / 2, 0),
           ok: this.sketch.createSprite(this.width / 2, 0),
+          legend: this.sketch.createSprite(this.width / 4 * 3, 0),
+          back: this.sketch.createSprite(this.width / 4, 0),
           submit: this.sketch.createSprite(this.width / 2, 0),
           textBox: this.sketch.createSprite(this.width / 2, 0),
           blood: this.sketch.createSprite(0, 0),
@@ -127,6 +134,8 @@ export class Game {
         this.sprites.getReady.addImage(this.images.getReady);
         this.sprites.scoreboard.addImage(this.images.scoreboard);
         this.sprites.ok.addImage(this.images.ok);
+        this.sprites.legend.addImage(this.images.legend);
+        this.sprites.back.addImage(this.images.back);
         this.sprites.submit.addImage(this.images.submit);
         this.sprites.textBox.addImage(this.images.textBox);
         this.sprites.blood.addAnimation("blood", this.animations.blood);
@@ -136,6 +145,7 @@ export class Game {
         this.spriteGroups = {
           foreground: new this.sketch.Group(),
           pipes: new this.sketch.Group(),
+          flock: new this.sketch.Group(),
         };
 
         for (let i = 0; i<(this.width/this.images.foreground.width)+2; i++) {
@@ -144,6 +154,11 @@ export class Game {
           sprite.position.x = (i+1/2)*sprite.width;
           sprite.position.y = this.height-sprite.height/2;
           this.spriteGroups.foreground.add(sprite);
+        }
+        for (let i=0; i<this.maxFlock; i++) {
+          const sprite = sketch.createSprite(0, 0);
+          sprite.addAnimation("flock", this.animations.glasses);
+          this.spriteGroups.flock.add(sprite);
         }
 
         this.start();

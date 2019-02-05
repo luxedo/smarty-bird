@@ -169,6 +169,10 @@ class Button {
       }
     }
   }
+  reset() {
+    this.active = true;
+    this.disabled = false;
+  }
 }
 
 class PipesScreen extends MovingScreen {
@@ -206,11 +210,13 @@ class PipesScreen extends MovingScreen {
         pipeTop.addImage(this.game.images.pipe);
         pipeTop.mirrorY(-1);
         pipeTop.setVelocity(-this.game.speed, 0);
+        pipeTop.slitHeight = slitHeight;
         this.game.spriteGroups.pipes.add(pipeTop);
 
         const pipeBottom = sketch.createSprite(pipeX, slitHeight + slit + this.game.images.pipe.height);
         pipeBottom.setVelocity(-this.game.speed, 0);
         pipeBottom.addImage(this.game.images.pipe);
+        pipeTop.slitHeight = slitHeight;
         this.game.spriteGroups.pipes.add(pipeBottom);
 
         this.pipesCount++;
@@ -235,7 +241,6 @@ class SingleScreen extends PipesScreen {
     this.bird.sprite.setVelocity(0, 0);
     this.bird.sprite.rotation = 0;
     this.bird.sprite.animation.play();
-    this.gravity = 12 / this.game.fps;
     this.flapStrength = 6;
 
     this.score = 0;
@@ -257,7 +262,7 @@ class SingleScreen extends PipesScreen {
 
     if (this.showPipes) {
       this.bird.update();
-      this.bird.sprite.addSpeed(this.gravity, 90);
+      this.bird.sprite.addSpeed(this.game.gravity, 90);
 
       const borderHeight = -100;
       if (this.bird.sprite.position.y < borderHeight) {
@@ -548,24 +553,306 @@ class CreditsScreen extends InfoScreen {
 }
 
 class TrainScreen extends PipesScreen {
-  init(sketch) {
+  init(sketch, previousScreen) {
     super.init(sketch);
-    this.showPipes = true;
+
+    this.previousScreen = previousScreen;
+    this.previousBestBird = this.previousScreen!=undefined?this.previousScreen.previousBestBird:undefined;
+    this.gen = this.previousScreen!=undefined?this.previousScreen.gen+1:1;
+
+    this.showPipes = false;
+    this.frames = 0;
+    this.showPipesAfter = 0*this.game.fps;
+
+    this.legendBoxY = this.game.height/2;
+    this.legendBoxResting = 2*this.game.height;
+    this.game.sprites.textBox.position.y = this.previousScreen!=undefined?this.game.sprites.textBox.position.y:this.legendBoxResting;
+    this.showLegend = this.previousScreen!=undefined?this.previousScreen.showLegend:false;
+    this.legend = new Button(this.game.sprites.legend);
+    this.legend.setY(this.game.height*0.95);
+
+    this.back = new Button(this.game.sprites.back);
+    this.back.setY(this.game.height*0.95);
+
+    this.flock = this.game.spriteGroups.flock.toArray().map(sprite => {
+      const bird = new SmartBird(sprite);
+      bird.sprite.position.x = this.game.width / 2;
+      bird.sprite.position.y = this.game.height / 7 * 3;
+      bird.sprite.setVelocity(0, 0);
+      bird.sprite.animation.play();
+      return bird;
+    });
+
+    if (this.previousBestBird != undefined) {
+      // Breed best bird to fill 50% of the flock
+      this.flock.slice(Math.floor(this.game.maxFlock*0.5)).forEach((bird, index) => {
+        if (index === 0) {
+          // Keep one copy of the original winner
+          bird.weightsDeep = this.previousBestBird.weightsDeep
+          bird.weightsOut = this.previousBestBird.weightsOut
+        } else {
+          bird.weightsDeep = this.previousBestBird.weightsDeep.map(neuron => neuron.map(w => w+randomBm(0, this.game.weightsVariance)));
+          bird.weightsOut = this.previousBestBird.weightsOut.map(w => w+randomBm(0, this.game.weightsVariance));
+        }
+      });
+    }
+
+    this.previousPipeDistance = Infinity;
+    this.score = 0;
   }
   update(sketch) {
     super.update(sketch);
+    if (this.frames == this.showPipesAfter) {
+      this.showPipes = true;
+    }
+    this.frames++;
+
+    this.legend.update();
+    this.legend.clicked(() => {
+      this.showLegend = !this.showLegend;
+      this.legend.reset();
+    });
+
+    this.back.update();
+    this.back.clicked(() => {
+      this.fadeOut().then(() => this.game.changeScreen(this.game.screens.menuScreen));
+    });
+
+    const nextPipe = this.game.spriteGroups.pipes.toArray().reduce((acc, pipe) => {
+      return pipe.position.x < acc.position.x && pipe.position.x > this.game.width/2-this.game.images.pipe.width/2 ? pipe : acc;
+    }, {
+      position: {
+        x: this.game.width
+      }
+    });
+    const pd = (nextPipe.position.x-this.game.width/2+this.game.images.pipe.width/2)/this.pipeGap;
+    const ph = ((nextPipe.slitHeight || -60)+55)/150;
+    const borderHeight = 0;
+
+    this.flock.forEach(bird => {
+      bird.update();
+      bird.think(pd, ph);
+      bird.sprite.addSpeed(this.game.gravity, 90);
+
+      if (this.game.spriteGroups.pipes.overlap(bird.sprite) || bird.sprite.position.y < borderHeight) {
+        this.killBird(bird);
+      }
+      if (this.game.spriteGroups.foreground.overlap(bird.sprite)) {
+        this.killBird(bird);
+        bird.sprite.position.y = this.game.height - this.game.images.foreground.height;
+        bird.sprite.animation.stop();
+      }
+    });
+    const actualBest = this.flock.filter(bird => !bird.dead)[0];
+    this.previousBestBird = actualBest==undefined?this.previousBestBird:actualBest;
+    this.flock = this.flock.filter(bird => bird.sprite.position.x > -this.game.sprites.bird.width);
+
+    if (this.previousPipeDistance < pd && this.flock.filter(bird => !bird.dead).length > 0) {
+      this.score++;
+    }
+    this.previousPipeDistance = pd;
+
+    if (this.flock.length == 0) {
+      this.game.changeScreen(this.game.screens.trainScreen, this);
+    }
   }
   draw(sketch) {
+    sketch.push();
+
     super.draw(sketch);
+    this.flock.forEach(bird => sketch.drawSprite(bird.sprite));
+    drawNumber(sketch, this.score, this.game.width/2, 30, this.game.images.digits);
+    sketch.text("Gen", 40, 190);
+    drawNumber(sketch, this.gen, 55, 200, this.game.images.digits);
+    sketch.text("Flock", 40, 260);
+    drawNumber(sketch, this.flock.filter(bird => !bird.dead).length, 55, 270, this.game.images.digits);
+
+    sketch.drawSprite(this.legend.sprite);
+    sketch.drawSprite(this.back.sprite);
+
+    if (this.previousBestBird !== undefined) {
+      const x = 30;
+      const y = 40;
+      const r = 10;
+
+      const input = this.previousBestBird._input;
+
+      sketch.stroke(this.game.textColor);
+      for (let i = 0; i<input.length; i++) {
+        for (let j = 0; j<this.previousBestBird.weightsDeep.length; j++) {
+          const weight = this.previousBestBird.weightsDeep[j][i];
+          sketch.strokeWeight(Math.abs(10*weight));
+          sketch.stroke(this.lineColor(weight))
+          sketch.line(x, y+i*3*r, x+3*r, y+1.5*r+j*3*r)
+        }
+        sketch.strokeWeight(1);
+        sketch.fill(this.nodeColor(this.previousBestBird._input[i], 0.1));
+        sketch.noStroke();
+        sketch.circle(x, y+i*3*r, r)
+        sketch.fill(this.game.textColor)
+        sketch.text(i+1, x-2*r, y+r/2+i*3*r);
+      }
+
+      const deep = this.previousBestBird.deepLayer1(input);
+
+      for (let i = 0; i<this.previousBestBird.weightsDeep.length; i++) {
+        const weight = this.previousBestBird.weightsOut[i];
+        sketch.strokeWeight(Math.abs(10*weight));
+        sketch.stroke(this.lineColor(weight))
+        sketch.line(x+3*r, y+1.5*r+i*3*r, x+6*r, (3*r*(input.length-1))/2+y)
+        sketch.fill(this.nodeColor(deep[i], 0.1));
+        sketch.noStroke();
+        sketch.strokeWeight(1);
+        sketch.circle(x+3*r, y+1.5*r+i*3*r, r)
+      }
+
+      sketch.fill(this.nodeColor(1, 0));
+      sketch.circle(x+3*r, y+1.5*r+this.previousBestBird.weightsDeep.length*3*r, r)
+      const weight = this.previousBestBird.weightsOut[this.previousBestBird.weightsOut.length-1];
+      sketch.strokeWeight(Math.abs(10*weight));
+      sketch.stroke(this.lineColor(weight))
+      sketch.line(x+3*r, y+1.5*r+this.previousBestBird.weightsDeep.length*3*r, x+6*r, (3*r*(input.length-1))/2+y)
+      sketch.noStroke();
+
+      const out = this.previousBestBird.outLayer(deep);
+      sketch.fill(this.nodeColor(out, 0));
+      sketch.circle(x+6*r, (3*r*(input.length-1))/2+y, r)
+
+      sketch.fill(this.game.textColor);
+      sketch.text("Out", x+7*r, (2.25*r*(input.length-1))/2+y+r/2);
+      sketch.text("Best Bird", x, y-20);
+
+      sketch.strokeWeight(1);
+      sketch.noStroke();
+    }
 
     this.checkFadeIn(sketch);
     this.checkFadeOut(sketch);
+
+    sketch.pop();
+    sketch.drawSprite(this.game.sprites.textBox);
+    if (this.showLegend) {
+      if (this.game.sprites.textBox.position.y > this.legendBoxY) {
+        this.game.sprites.textBox.position.y -= 30;
+      } else {
+        sketch.push();
+
+        sketch.textAlign(sketch.CENTER);
+        sketch.text("Perceptrons:", this.game.width/2, 120);
+        sketch.text("Positive", this.game.width/4, 165);
+        sketch.text("Negative", this.game.width/2, 165);
+        sketch.text("Transition", this.game.width/4*3, 165);
+        sketch.text("Weights:", this.game.width/2, 200);
+        sketch.text("Highly Positive", 90, 230);
+        sketch.text("Highly Negative", 90, 260);
+        sketch.text("Weakly Positive", 230, 230);
+        sketch.text("Weakly Negative", 230, 260);
+        sketch.text("Input/Output:", this.game.width/2, 290);
+        sketch.textAlign(sketch.LEFT);
+        sketch.text("1: Pipe Distance", 50, 310);
+        sketch.text("2: Pipe Height", 50, 325);
+        sketch.text("3: Bird Velocity", 50, 340);
+        sketch.text("4: Bird Height", 50, 355);
+        sketch.text("5: Bias", 50, 370);
+        sketch.text("Out: Output (Flap Wings)", 50, 385);
+
+        sketch.fill(this.nodeColor(1, 0.1));
+        sketch.circle(80, 140, 10)
+        sketch.fill(this.nodeColor(-1, 0.1));
+        sketch.circle(160, 140, 10)
+        sketch.fill(this.nodeColor(0, 0.1));
+        sketch.circle(240, 140, 10)
+
+        sketch.strokeWeight(5);
+        sketch.stroke(this.lineColor(1))
+        sketch.line(75, 215, 105, 215)
+        sketch.strokeWeight(1);
+        sketch.line(215, 215, 245, 215)
+        sketch.stroke(this.lineColor(-1))
+        sketch.line(215, 245, 245, 245)
+        sketch.strokeWeight(5);
+        sketch.line(75, 245, 105, 245)
+
+        sketch.pop();
+      }
+    } else {
+      if (this.game.sprites.textBox.position.y < this.legendBoxResting) {
+        this.game.sprites.textBox.position.y += 30;
+      }
+    }
+  }
+  killBird(bird) {
+    if (!bird.dead) {
+      this.game.sounds.hit.jump(0.1, 0.3);
+      setTimeout(() => {
+        this.game.sounds.die.play();
+      }, 500);
+      bird.sprite.addSpeed(this.game.speed, 180);
+    }
+    bird.dead = true;
+    // bird.sprite.rotation = 90;
+  }
+  nodeColor(value, thresh) {
+    if (value >= thresh) {
+      return "#20AA20AA";
+    } else if (value >= -thresh ){
+      return "#AAAA20AA";
+    } else {
+      return "#AA2020AA";
+    }
+  }
+  lineColor(value) {
+    if (value >= 0) {
+      return "#206620";
+    } else {
+      return "#662020";
+    }
+  }
+}
+
+class SmartBird extends Bird{
+  constructor(sprite) {
+    super(sprite);
+    this.flapStrength = 6;
+    this.weightsDeep = [  // Deep layer
+      [Math.random()-0.5, Math.random()-0.5, Math.random()-0.5, Math.random()-0.5, Math.random()-0.5],
+      [Math.random()-0.5, Math.random()-0.5, Math.random()-0.5, Math.random()-0.5, Math.random()-0.5],
+      [Math.random()-0.5, Math.random()-0.5, Math.random()-0.5, Math.random()-0.5, Math.random()-0.5],
+    ];
+    this.weightsOut = [Math.random()-0.5, Math.random()-0.5, Math.random()-0.5, Math.random()-0.5];
+  }
+  think(pd, ph) {
+    const input = this.input(pd, ph);
+    const deep = this.deepLayer1(input);
+    const out = this.outLayer(deep)
+    if (out >= 0) {  // If output neuron is active, flap wings
+      this.flap(this.flapStrength);
+    }
+  }
+  input(pd, ph) {
+    const bv = -this.sprite.velocity.y/30;
+    const bh = (this.sprite.position.y-240)/240;
+    this._input = [
+      pd,  // Pipe distance
+      ph,  // Pipe height
+      bv,  // Bird velocity
+      bh,  // Bird height
+      1,   // Bias
+    ];
+    return this._input;
+  }
+  deepLayer1(input) {
+    return this.weightsDeep.map(ws => Math.tanh(ws.map((w, index) => w*input[index]).reduce((acc, cur) => acc+cur))).concat([1])
+  }
+  outLayer(input) {
+    return Math.tanh(this.weightsOut.map((w, index) => w*input[index]).reduce((acc, cur) => acc+cur));
   }
 }
 
 export function screens(game) {
   return {
     menuScreen: new MenuScreen(game),
+    // menuScreen: new TrainScreen(game),
     // menuScreen: new PipesScreen(game),
     // menuScreen: new HighScoresScreen(game),
     // menuScreen: new CreditsScreen(game),
@@ -601,4 +888,12 @@ function ordinalSuffixOf(number) {
     return number + "rd";
   }
   return number + "th";
+}
+
+function randomBm(mean, variance) {
+  let u = 0,
+    v = 0;
+  while (u === 0) u = Math.random(); //Converting [0,1) to (0,1)
+  while (v === 0) v = Math.random();
+  return mean + Math.sqrt(variance * -2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
 }
