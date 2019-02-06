@@ -104,11 +104,7 @@ export class Game {
         this.canvas.canvas.getContext("2d").imageSmoothingEnabled = false;
 
         this.maxWidth = 480;
-        this.innerWidth = window.innerWidth>this.maxWidth?this.maxWidth:window.innerWidth;
-        this.scale = this.innerWidth/this.width;
-
-        this.canvas.canvas.style.width = `${this.scale*this.width}px`;
-        this.canvas.canvas.style.height = `${this.scale*this.height}px`;
+        this.maxHeight = 660;
 
         this.canvas.parent(this.canvasId);
         this.sketch.frameRate(this.framerate);
@@ -190,9 +186,15 @@ export class Game {
       };
       this.sketch.draw = () => {
         const w = window.innerWidth>this.maxWidth?this.maxWidth:window.innerWidth;
-        if (w != this.innerWidth) {
-          this.innerWidth = w;
-          this.scale = this.innerWidth/this.width;
+        let h = window.innerHeight>this.maxHeight?this.maxHeight:window.innerHeight;
+        h -= 60;
+
+        const wScale = w/this.width;
+        const hScale = h/this.height;
+        const scale = wScale<hScale?wScale:hScale;
+
+        if (scale != this.scale) {
+          this.scale = scale;
           this.canvas.canvas.style.width = `${this.scale*this.width}px`;
           this.canvas.canvas.style.height = `${this.scale*this.height}px`;
         }
