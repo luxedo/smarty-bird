@@ -72,9 +72,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 window.addEventListener("keydown", function(event) {
-  if ([" ", "ArrowDown", "ArrowLeft", "ArrowRight",
-      "ArrowUp", "End", "Home", "PageDown", "PageUp"
-    ].includes(event.key)) {
+  if ([" ", "ArrowDown",  "ArrowUp"].includes(event.key)) {
     event.preventDefault();
   }
 }, false);

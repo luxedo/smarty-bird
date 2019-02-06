@@ -21,7 +21,7 @@
         "value": "*"
       }]
     }, {
-      "source": "**/*.@(jpg|jpeg|gif|png|js)",
+      "source": "**/*.@(jpg|jpeg|gif|png|js|wav)",
       "headers": [{
         "key": "Cache-Control",
         "value": "max-age=31536000"

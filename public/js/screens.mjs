@@ -105,25 +105,27 @@ class MenuScreen extends MovingScreen {
   }
   update(sketch) {
     super.update(sketch);
-
     this.start.update();
     this.start.clicked(() => {
+      this.game.sounds.swooshing.play();
       this.fadeOut().then(() => this.game.changeScreen(this.game.screens.singleScreen));
     });
 
     this.train.update();
     this.train.clicked(() => {
+      this.game.sounds.swooshing.play();
       this.fadeOut().then(() => this.game.changeScreen(this.game.screens.trainScreen));
     });
 
     this.highScores.update();
     this.highScores.clicked(() => {
-      this.fadeOut();
+      this.game.sounds.swooshing.play();
       this.fadeOut().then(() => this.game.changeScreen(this.game.screens.highScoresScreen));
     });
 
     this.credits.update();
     this.credits.clicked(() => {
+      this.game.sounds.swooshing.play();
       this.fadeOut().then(() => this.game.changeScreen(this.game.screens.creditsScreen));
     });
     this.game.sprites.title.position.y = this.titleY + 8 * Math.sin(Date.now() / 200);
@@ -135,6 +137,11 @@ class MenuScreen extends MovingScreen {
     sketch.drawSprite(this.train.sprite);
     sketch.drawSprite(this.highScores.sprite);
     sketch.drawSprite(this.credits.sprite);
+
+    sketch.textAlign(sketch.CENTER);
+    sketch.text("V1.0-beta", this.game.width/2, this.game.height*0.95);
+    sketch.textAlign(sketch.LEFT);
+
     this.checkFadeIn(sketch);
     this.checkFadeOut(sketch);
   }
@@ -229,6 +236,14 @@ class PipesScreen extends MovingScreen {
     sketch.drawSprites(this.game.spriteGroups.pipes);
     sketch.drawSprites(this.game.spriteGroups.foreground);
   }
+  pause() {
+    this.game.spriteGroups.pipes.toArray().forEach(pipe => pipe.setVelocity(0, 0));
+    this.game.spriteGroups.foreground.toArray().forEach(tile => tile.setVelocity(0, 0));
+  }
+  resume() {
+    this.game.spriteGroups.pipes.toArray().forEach(pipe => pipe.setVelocity(-this.game.speed, 0));
+    this.game.spriteGroups.foreground.toArray().forEach(tile => tile.setVelocity(-this.game.speed, 0));
+  }
 }
 
 class SingleScreen extends PipesScreen {
@@ -252,13 +267,19 @@ class SingleScreen extends PipesScreen {
   update(sketch) {
     super.update(sketch);
 
-    this.game.spriteGroups.pipes.toArray().forEach(pipe => {
+    const scored = this.game.spriteGroups.pipes.toArray().reduce((acc, pipe) => {
       // Increase score
-      if (!pipe.scored && this.bird.sprite.position.x > pipe.position.x + this.game.images.pipe.width/2) {
+      if (!pipe.scored && this.bird.sprite.position.x > pipe.position.x + this.game.images.pipe.width / 2) {
         pipe.scored = true;
-        this.score += 0.5; // Adding 2*0.5 (top and bottom pipes)
+        acc = true;
       }
-    });
+      return acc;
+    }, false);
+
+    if (scored) {
+      this.score += 1;
+      this.game.sounds.point.play();
+    }
 
     if (this.showPipes) {
       this.bird.update();
@@ -292,25 +313,26 @@ class SingleScreen extends PipesScreen {
       sketch.drawSprite(this.game.sprites.getReady);
     }
 
-    drawNumber(sketch, this.score, this.game.width/2, 30, this.game.images.digits);
+    drawNumber(sketch, this.score, this.game.width / 2, 30, this.game.images.digits);
 
     this.checkFadeIn(sketch);
   }
   keyPressed() {
     this.showPipes = true;
     this.bird.flap(this.flapStrength);
+    this.game.sounds.wing.play();
   }
   mouseClicked() {
     this.showPipes = true;
     this.bird.flap(this.flapStrength);
+    this.game.sounds.wing.jump(0.03, 0.3);
   }
   killBird() {
     if (!this.bird.dead) {
       this.game.sounds.hit.jump(0.1, 0.3);
-      // this.game.sounds.hit.play();
       setTimeout(() => {
         this.game.sounds.die.play();
-      }, 500);
+      }, 300);
     }
     this.bird.dead = true;
     this.game.spriteGroups.pipes.toArray().forEach(pipe => {
@@ -370,13 +392,13 @@ class GameOverScreen extends BlankScreen {
     this.best = this.best > this.previousScreen.score ? this.best : this.previousScreen.score;
     if (this.game.db.user !== undefined) {
       this.game.db.collection(this.game.collection).doc(this.game.db.user.uid).get()
-      .then((doc) => {
-        if (doc.exists) {
-          this.best = this.best > doc.data().score ? this.best : doc.data().score;
-        }
-        window.localStorage.setItem("best", this.best);
-      })
-      .catch(function(error) {});
+        .then((doc) => {
+          if (doc.exists) {
+            this.best = this.best > doc.data().score ? this.best : doc.data().score;
+          }
+          window.localStorage.setItem("best", this.best);
+        })
+        .catch(function(error) {});
     }
 
     this.btnY = this.game.height / 4 * 3;
@@ -398,17 +420,20 @@ class GameOverScreen extends BlankScreen {
     this.ok.update();
     this.ok.clicked(() => {
       this.fadeOut().then(() => {
+        this.game.sounds.swooshing.play();
         this.game.changeScreen(this.game.screens.menuScreen);
       });
     });
 
-    this.submit.update();
-    this.submit.clicked(() => {
-      this.fadeOut().then(() => {
-        this.game.changeScreen(this.game.screens.highScoresScreen);
-      });
-      if (this.game.db.user !== undefined) {
-        this.game.db.collection(this.game.collection).doc(this.game.db.user.uid).set({
+    if (this.game.db.user !== undefined) {
+      this.submit.update();
+      this.submit.clicked(() => {
+        this.fadeOut().then(() => {
+          this.game.sounds.swooshing.play();
+          this.game.changeScreen(this.game.screens.highScoresScreen);
+        });
+        if (this.game.db.user !== undefined) {
+          this.game.db.collection(this.game.collection).doc(this.game.db.user.uid).set({
             uid: this.game.db.user.uid,
             displayName: this.game.db.user.displayName,
             score: parseInt(this.best)
@@ -419,10 +444,11 @@ class GameOverScreen extends BlankScreen {
           .catch(function(error) {
             // console.error("Error adding document: ", error);
           });
-      } else {
-        // Gotta login buddy
-      }
-    });
+        } else {
+          // Gotta login buddy
+        }
+      });
+    }
   }
   draw(sketch) {
     // super.draw(sketch);
@@ -441,7 +467,10 @@ class GameOverScreen extends BlankScreen {
       drawNumber(sketch, this.best, this.game.width - 102, 230, this.game.images.digits);
     }
     sketch.drawSprite(this.ok.sprite);
-    sketch.drawSprite(this.submit.sprite);
+
+    if (this.game.db.user !== undefined) {
+      sketch.drawSprite(this.submit.sprite);
+    }
 
     if (this.opacity < 255) {
       sketch.tint(255, this.opacity);
@@ -460,9 +489,9 @@ class InfoScreen extends MovingScreen {
   init(sketch) {
     super.init(sketch);
 
-    this.ok = new Button(this.game.sprites.ok);
-    // this.ok.sprite.position.x = this.game.width/4;
-    this.ok.setY(455);
+    this.back = new Button(this.game.sprites.back);
+    // this.back.sprite.position.x = this.game.width/4;
+    this.back.setY(455);
 
     this.titleY = 60;
     this.game.sprites.title.position.y = this.titleY;
@@ -472,14 +501,15 @@ class InfoScreen extends MovingScreen {
   update(sketch) {
     super.update(sketch);
 
-    this.ok.update();
-    this.ok.clicked(() => {
+    this.back.update();
+    this.back.clicked(() => {
+      this.game.sounds.swooshing.play();
       this.fadeOut().then(() => this.game.changeScreen(this.game.screens.menuScreen));
     });
   }
   draw(sketch) {
     super.draw(sketch);
-    sketch.drawSprite(this.ok.sprite);
+    sketch.drawSprite(this.back.sprite);
     sketch.drawSprite(this.game.sprites.title);
     sketch.drawSprite(this.game.sprites.textBox);
   }
@@ -541,11 +571,18 @@ class CreditsScreen extends InfoScreen {
   }
   draw(sketch) {
     super.draw(sketch);
-    sketch.text(`This is a copy of the game "Flappy`, this.game.width / 11, 150);
-    sketch.text(`Bird" with a genetic deep neural`, this.game.width / 11, 163);
-    sketch.text(`network AI, made by Luxedo and`, this.game.width / 11, 176);
-    sketch.text(`Faifos.`, this.game.width / 11, 189);
-    sketch.text(`Thanks to the playtesters ...`, this.game.width / 11, 210);
+    sketch.text(`This is a reproduction of the game`, this.game.width / 11, 150);
+    sketch.text(`"Flappy Bird" with a genetic deep`, this.game.width / 11, 165);
+    sketch.text(`neural network AI, made by Luxedo`, this.game.width / 11, 180);
+    sketch.text(`and Faifos.`, this.game.width / 11, 195);
+
+    sketch.text(`Thanks to Andrew Tyler for the`, this.game.width / 11, 220);
+    sketch.text(`pixelmix font.`, this.game.width / 11, 235);
+    sketch.text(`Thanks to SuperTVGRFan18496 for`, this.game.width / 11, 255);
+    sketch.text(`the sound assets.`, this.game.width / 11, 270);
+
+    sketch.text(`Thanks to the playtesters ...`, this.game.width / 11, 295);
+
 
     this.checkFadeIn(sketch);
     this.checkFadeOut(sketch);
@@ -557,22 +594,33 @@ class TrainScreen extends PipesScreen {
     super.init(sketch);
 
     this.previousScreen = previousScreen;
-    this.previousBestBird = this.previousScreen!=undefined?this.previousScreen.previousBestBird:undefined;
-    this.gen = this.previousScreen!=undefined?this.previousScreen.gen+1:1;
+    this.previousBestBird = this.previousScreen != undefined ? this.previousScreen.previousBestBird : undefined;
+    this.gen = this.previousScreen != undefined ? this.previousScreen.gen + 1 : 1;
 
     this.showPipes = false;
     this.frames = 0;
-    this.showPipesAfter = 0*this.game.fps;
+    this.showPipesAfter = 0 * this.game.fps;
 
-    this.legendBoxY = this.game.height/2;
-    this.legendBoxResting = 2*this.game.height;
-    this.game.sprites.textBox.position.y = this.previousScreen!=undefined?this.game.sprites.textBox.position.y:this.legendBoxResting;
-    this.showLegend = this.previousScreen!=undefined?this.previousScreen.showLegend:false;
+    this.legendBoxY = this.game.height / 2;
+    this.legendBoxResting = 2 * this.game.height;
+    this.game.sprites.textBox.position.y = this.previousScreen != undefined ? this.game.sprites.textBox.position.y : this.legendBoxResting;
+    this.showLegend = this.previousScreen != undefined ? this.previousScreen.showLegend : false;
     this.legend = new Button(this.game.sprites.legend);
-    this.legend.setY(this.game.height*0.95);
+    this.legend.setY(this.game.height * 0.93);
 
     this.back = new Button(this.game.sprites.back);
-    this.back.setY(this.game.height*0.95);
+    this.back.setY(this.game.height * 0.93);
+
+    // this.versus = new Button(this.game.sprites.versus);
+    // this.versus.setY(200);
+
+    this.page = this.previousScreen != undefined ? this.previousScreen.page : 0;
+    this.arrowBack = new Button(this.game.sprites.arrowBack);
+    this.arrowBack.setY(this.game.height * 0.78);
+    this.arrowBack.sprite.position.x = this.game.width*0.87;
+    this.arrowNext = new Button(this.game.sprites.arrowNext);
+    this.arrowNext.setY(this.game.height * 0.78);
+    this.arrowNext.sprite.position.x = this.game.width*0.9;
 
     this.flock = this.game.spriteGroups.flock.toArray().map(sprite => {
       const bird = new SmartBird(sprite);
@@ -583,16 +631,17 @@ class TrainScreen extends PipesScreen {
       return bird;
     });
 
+    this.mutationProb = 0.5;
     if (this.previousBestBird != undefined) {
       // Breed best bird to fill 50% of the flock
-      this.flock.slice(Math.floor(this.game.maxFlock*0.5)).forEach((bird, index) => {
+      this.flock.slice(Math.floor(this.game.maxFlock * 0.5)).forEach((bird, index) => {
         if (index === 0) {
           // Keep one copy of the original winner
-          bird.weightsDeep = this.previousBestBird.weightsDeep
-          bird.weightsOut = this.previousBestBird.weightsOut
+          bird.weightsDeep = this.previousBestBird.weightsDeep;
+          bird.weightsOut = this.previousBestBird.weightsOut;
         } else {
-          bird.weightsDeep = this.previousBestBird.weightsDeep.map(neuron => neuron.map(w => w+randomBm(0, this.game.weightsVariance)));
-          bird.weightsOut = this.previousBestBird.weightsOut.map(w => w+randomBm(0, this.game.weightsVariance));
+          bird.weightsDeep = this.previousBestBird.weightsDeep.map(neuron => neuron.map(w => w + Math.random()<this.mutationProb?randomBm(0, this.game.weightsVariance):0));
+          bird.weightsOut = this.previousBestBird.weightsOut.map(w => w + Math.random<this.mutationProb?randomBm(0, this.game.weightsVariance):0);
         }
       });
     }
@@ -615,18 +664,35 @@ class TrainScreen extends PipesScreen {
 
     this.back.update();
     this.back.clicked(() => {
+      this.game.sounds.swooshing.play();
       this.fadeOut().then(() => this.game.changeScreen(this.game.screens.menuScreen));
     });
 
+    this.arrowBack.update();
+    this.arrowBack.clicked(() => {
+      this.arrowBack.reset();
+      this.page = this.page===1?0:1;
+    });
+    this.arrowNext.update();
+    this.arrowNext.clicked(() => {
+      this.arrowNext.reset();
+      this.page = this.page===1?0:1;
+    });
+
+    // this.versus.update();
+    // this.versus.clicked(() => {
+    //   this.fadeOut().then(() => this.game.changeScreen(this.game.screens.challengeScreen, this));
+    // });
+
     const nextPipe = this.game.spriteGroups.pipes.toArray().reduce((acc, pipe) => {
-      return pipe.position.x < acc.position.x && pipe.position.x > this.game.width/2-this.game.images.pipe.width/2 ? pipe : acc;
+      return pipe.position.x < acc.position.x && pipe.position.x > this.game.width / 2 - this.game.images.pipe.width / 2 ? pipe : acc;
     }, {
       position: {
         x: this.game.width
       }
     });
-    const pd = (nextPipe.position.x-this.game.width/2+this.game.images.pipe.width/2)/this.pipeGap;
-    const ph = ((nextPipe.slitHeight || -60)+55)/150;
+    const pd = (nextPipe.position.x - this.game.width / 2 + this.game.images.pipe.width / 2) / this.pipeGap;
+    const ph = ((nextPipe.slitHeight || -60) + 55) / 150;
     const borderHeight = 0;
 
     this.flock.forEach(bird => {
@@ -644,7 +710,7 @@ class TrainScreen extends PipesScreen {
       }
     });
     const actualBest = this.flock.filter(bird => !bird.dead)[0];
-    this.previousBestBird = actualBest==undefined?this.previousBestBird:actualBest;
+    this.previousBestBird = actualBest == undefined ? this.previousBestBird : actualBest;
     this.flock = this.flock.filter(bird => bird.sprite.position.x > -this.game.sprites.bird.width);
 
     if (this.previousPipeDistance < pd && this.flock.filter(bird => !bird.dead).length > 0) {
@@ -661,14 +727,22 @@ class TrainScreen extends PipesScreen {
 
     super.draw(sketch);
     this.flock.forEach(bird => sketch.drawSprite(bird.sprite));
-    drawNumber(sketch, this.score, this.game.width/2, 30, this.game.images.digits);
-    sketch.text("Gen", 40, 190);
-    drawNumber(sketch, this.gen, 55, 200, this.game.images.digits);
-    sketch.text("Flock", 40, 260);
-    drawNumber(sketch, this.flock.filter(bird => !bird.dead).length, 55, 270, this.game.images.digits);
+    drawNumber(sketch, this.score, this.game.width / 2, 30, this.game.images.digits);
+    sketch.text("Gen", 40, 245);
+    drawNumber(sketch, this.gen, 55, 250, this.game.images.digits);
+    sketch.text("Flock", 40, 305);
+    const alive = this.flock.filter(bird => !bird.dead).length;
+    drawNumber(sketch, alive, 55, 310, this.game.images.digits);
 
     sketch.drawSprite(this.legend.sprite);
-    sketch.drawSprite(this.back.sprite);
+    if (!this.showLegend) {
+      sketch.drawSprite(this.back.sprite);
+    }
+
+
+    // if (alive == 1) {
+    //   sketch.drawSprite(this.versus.sprite);
+    // }
 
     if (this.previousBestBird !== undefined) {
       const x = 30;
@@ -678,49 +752,49 @@ class TrainScreen extends PipesScreen {
       const input = this.previousBestBird._input;
 
       sketch.stroke(this.game.textColor);
-      for (let i = 0; i<input.length; i++) {
-        for (let j = 0; j<this.previousBestBird.weightsDeep.length; j++) {
+      for (let i = 0; i < input.length; i++) {
+        for (let j = 0; j < this.previousBestBird.weightsDeep.length; j++) {
           const weight = this.previousBestBird.weightsDeep[j][i];
-          sketch.strokeWeight(Math.abs(10*weight));
-          sketch.stroke(this.lineColor(weight))
-          sketch.line(x, y+i*3*r, x+3*r, y+1.5*r+j*3*r)
+          sketch.strokeWeight(Math.abs(10 * weight));
+          sketch.stroke(this.lineColor(weight));
+          sketch.line(x, y + i * 3 * r, x + 3 * r, y + 1.5 * r + j * 3 * r);
         }
         sketch.strokeWeight(1);
         sketch.fill(this.nodeColor(this.previousBestBird._input[i], 0.1));
         sketch.noStroke();
-        sketch.circle(x, y+i*3*r, r)
-        sketch.fill(this.game.textColor)
-        sketch.text(i+1, x-2*r, y+r/2+i*3*r);
+        sketch.circle(x, y + i * 3 * r, r);
+        sketch.fill(this.game.textColor);
+        sketch.text(i + 1, x - 2 * r, y + r / 2 + i * 3 * r);
       }
 
       const deep = this.previousBestBird.deepLayer1(input);
 
-      for (let i = 0; i<this.previousBestBird.weightsDeep.length; i++) {
+      for (let i = 0; i < this.previousBestBird.weightsDeep.length; i++) {
         const weight = this.previousBestBird.weightsOut[i];
-        sketch.strokeWeight(Math.abs(10*weight));
-        sketch.stroke(this.lineColor(weight))
-        sketch.line(x+3*r, y+1.5*r+i*3*r, x+6*r, (3*r*(input.length-1))/2+y)
+        sketch.strokeWeight(Math.abs(10 * weight));
+        sketch.stroke(this.lineColor(weight));
+        sketch.line(x + 3 * r, y + 1.5 * r + i * 3 * r, x + 6 * r, (3 * r * (input.length - 1)) / 2 + y);
         sketch.fill(this.nodeColor(deep[i], 0.1));
         sketch.noStroke();
         sketch.strokeWeight(1);
-        sketch.circle(x+3*r, y+1.5*r+i*3*r, r)
+        sketch.circle(x + 3 * r, y + 1.5 * r + i * 3 * r, r);
       }
 
       sketch.fill(this.nodeColor(1, 0));
-      sketch.circle(x+3*r, y+1.5*r+this.previousBestBird.weightsDeep.length*3*r, r)
-      const weight = this.previousBestBird.weightsOut[this.previousBestBird.weightsOut.length-1];
-      sketch.strokeWeight(Math.abs(10*weight));
-      sketch.stroke(this.lineColor(weight))
-      sketch.line(x+3*r, y+1.5*r+this.previousBestBird.weightsDeep.length*3*r, x+6*r, (3*r*(input.length-1))/2+y)
+      sketch.circle(x + 3 * r, y + 1.5 * r + this.previousBestBird.weightsDeep.length * 3 * r, r);
+      const weight = this.previousBestBird.weightsOut[this.previousBestBird.weightsOut.length - 1];
+      sketch.strokeWeight(Math.abs(10 * weight));
+      sketch.stroke(this.lineColor(weight));
+      sketch.line(x + 3 * r, y + 1.5 * r + this.previousBestBird.weightsDeep.length * 3 * r, x + 6 * r, (3 * r * (input.length - 1)) / 2 + y);
       sketch.noStroke();
 
       const out = this.previousBestBird.outLayer(deep);
       sketch.fill(this.nodeColor(out, 0));
-      sketch.circle(x+6*r, (3*r*(input.length-1))/2+y, r)
+      sketch.circle(x + 6 * r, (3 * r * (input.length - 1)) / 2 + y, r);
 
       sketch.fill(this.game.textColor);
-      sketch.text("Out", x+7*r, (2.25*r*(input.length-1))/2+y+r/2);
-      sketch.text("Best Bird", x, y-20);
+      sketch.text("Out", x + 7 * r, (2.25 * r * (input.length - 1)) / 2 + y + r / 2);
+      sketch.text("Smartest Bird", x, y - 20);
 
       sketch.strokeWeight(1);
       sketch.noStroke();
@@ -737,43 +811,74 @@ class TrainScreen extends PipesScreen {
       } else {
         sketch.push();
 
-        sketch.textAlign(sketch.CENTER);
-        sketch.text("Perceptrons:", this.game.width/2, 120);
-        sketch.text("Positive", this.game.width/4, 165);
-        sketch.text("Negative", this.game.width/2, 165);
-        sketch.text("Transition", this.game.width/4*3, 165);
-        sketch.text("Weights:", this.game.width/2, 200);
-        sketch.text("Highly Positive", 90, 230);
-        sketch.text("Highly Negative", 90, 260);
-        sketch.text("Weakly Positive", 230, 230);
-        sketch.text("Weakly Negative", 230, 260);
-        sketch.text("Input/Output:", this.game.width/2, 290);
-        sketch.textAlign(sketch.LEFT);
-        sketch.text("1: Pipe Distance", 50, 310);
-        sketch.text("2: Pipe Height", 50, 325);
-        sketch.text("3: Bird Velocity", 50, 340);
-        sketch.text("4: Bird Height", 50, 355);
-        sketch.text("5: Bias", 50, 370);
-        sketch.text("Out: Output (Flap Wings)", 50, 385);
+        if (this.page == 0) {
+          sketch.textAlign(sketch.CENTER);
+          sketch.text("Training Birds", this.game.width / 2, 115);
 
-        sketch.fill(this.nodeColor(1, 0.1));
-        sketch.circle(80, 140, 10)
-        sketch.fill(this.nodeColor(-1, 0.1));
-        sketch.circle(160, 140, 10)
-        sketch.fill(this.nodeColor(0, 0.1));
-        sketch.circle(240, 140, 10)
+          sketch.textAlign(sketch.LEFT);
+          // sketch.text("This screen shows a training //", this.game.width / 8, 145);
+          sketch.text("This screen shows the training", this.game.width / 8, 135);
+          sketch.text("of a two layer artificial neural", this.game.width / 8, 150);
+          sketch.text("network.", this.game.width / 8, 165);
 
-        sketch.strokeWeight(5);
-        sketch.stroke(this.lineColor(1))
-        sketch.line(75, 215, 105, 215)
-        sketch.strokeWeight(1);
-        sketch.line(215, 215, 245, 215)
-        sketch.stroke(this.lineColor(-1))
-        sketch.line(215, 245, 245, 245)
-        sketch.strokeWeight(5);
-        sketch.line(75, 245, 105, 245)
+          sketch.text("This network has 4 inputs and", this.game.width / 8, 185);
+          sketch.text("a bias term. The deep layer has", this.game.width / 8, 200);
+          sketch.text("3 neurons and another bias. The", this.game.width / 8, 215);
+          sketch.text("output is a single neuron.", this.game.width / 8, 230);
 
+          sketch.text("The network is trained with a", this.game.width / 8, 250);
+          sketch.text("genetic algorithm. The best bird", this.game.width / 8, 265);
+          sketch.text("is allowed to breed and fill 50%", this.game.width / 8, 280);
+          sketch.text("of the population. Variance is", this.game.width / 8, 295);
+          sketch.text("introduced by altering the", this.game.width / 8, 310);
+          sketch.text("neurons randomly.", this.game.width / 8, 325);
+
+          sketch.text("Let the birds train for a while", this.game.width / 8, 345);
+          sketch.text("and after some generations they", this.game.width / 8, 360);
+          sketch.text("will be better than you XD", this.game.width / 8, 375);
+
+        } else {
+          sketch.textAlign(sketch.CENTER);
+          sketch.text("Neurons:", this.game.width / 2, 120);
+          sketch.text("Positive", this.game.width / 4, 165);
+          sketch.text("Negative", this.game.width / 2, 165);
+          sketch.text("Transition", this.game.width / 4 * 3, 165);
+          sketch.text("Weights:", this.game.width / 2, 195);
+          sketch.text("Highly Positive", 90, 225);
+          sketch.text("Highly Negative", 90, 255);
+          sketch.text("Weakly Positive", 230, 225);
+          sketch.text("Weakly Negative", 230, 255);
+          sketch.text("Input/Output:", this.game.width / 2, 280);
+          sketch.textAlign(sketch.LEFT);
+          sketch.text("1: Pipe Distance", 50, 300);
+          sketch.text("2: Pipe Height", 50, 315);
+          sketch.text("3: Bird Velocity", 50, 330);
+          sketch.text("4: Bird Height", 50, 345);
+          sketch.text("5: Bias", 50, 360);
+          sketch.text("Out: Output (Flap Wings)", 50, 375);
+
+          sketch.fill(this.nodeColor(1, 0.1));
+          sketch.circle(80, 140, 10);
+          sketch.fill(this.nodeColor(-1, 0.1));
+          sketch.circle(160, 140, 10);
+          sketch.fill(this.nodeColor(0, 0.1));
+          sketch.circle(240, 140, 10);
+
+          const row1 = 210;
+          const row2 = 240;
+          sketch.strokeWeight(5);
+          sketch.stroke(this.lineColor(1));
+          sketch.line(75, row1, 105, row1);
+          sketch.strokeWeight(1);
+          sketch.line(215, row1, 245, row1);
+          sketch.stroke(this.lineColor(-1));
+          sketch.line(215, row2, 245, row2);
+          sketch.strokeWeight(5);
+          sketch.line(75, row2, 105, row2);
+        }
         sketch.pop();
+        sketch.drawSprite(this.arrowBack.sprite);
+        sketch.drawSprite(this.arrowNext.sprite);
       }
     } else {
       if (this.game.sprites.textBox.position.y < this.legendBoxResting) {
@@ -783,10 +888,6 @@ class TrainScreen extends PipesScreen {
   }
   killBird(bird) {
     if (!bird.dead) {
-      this.game.sounds.hit.jump(0.1, 0.3);
-      setTimeout(() => {
-        this.game.sounds.die.play();
-      }, 500);
       bird.sprite.addSpeed(this.game.speed, 180);
     }
     bird.dead = true;
@@ -795,7 +896,7 @@ class TrainScreen extends PipesScreen {
   nodeColor(value, thresh) {
     if (value >= thresh) {
       return "#20AA20AA";
-    } else if (value >= -thresh ){
+    } else if (value >= -thresh) {
       return "#AAAA20AA";
     } else {
       return "#AA2020AA";
@@ -810,42 +911,56 @@ class TrainScreen extends PipesScreen {
   }
 }
 
-class SmartBird extends Bird{
+class ChallengeScreen extends SingleScreen {
+  init(sketch, previousScreen) {
+    super.init(sketch);
+    this.previousScreen = previousScreen;
+    console.log(previousScreen);
+  }
+  update(sketch) {
+    super.update(sketch);
+  }
+  draw(sketch) {
+    super.draw(sketch);
+  }
+}
+
+class SmartBird extends Bird {
   constructor(sprite) {
     super(sprite);
     this.flapStrength = 6;
-    this.weightsDeep = [  // Deep layer
-      [Math.random()-0.5, Math.random()-0.5, Math.random()-0.5, Math.random()-0.5, Math.random()-0.5],
-      [Math.random()-0.5, Math.random()-0.5, Math.random()-0.5, Math.random()-0.5, Math.random()-0.5],
-      [Math.random()-0.5, Math.random()-0.5, Math.random()-0.5, Math.random()-0.5, Math.random()-0.5],
+    this.weightsDeep = [ // Deep layer
+      [Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5],
+      [Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5],
+      [Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5],
     ];
-    this.weightsOut = [Math.random()-0.5, Math.random()-0.5, Math.random()-0.5, Math.random()-0.5];
+    this.weightsOut = [Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5];
   }
   think(pd, ph) {
     const input = this.input(pd, ph);
     const deep = this.deepLayer1(input);
-    const out = this.outLayer(deep)
-    if (out >= 0) {  // If output neuron is active, flap wings
+    const out = this.outLayer(deep);
+    if (out >= 0) { // If output neuron is active, flap wings
       this.flap(this.flapStrength);
     }
   }
   input(pd, ph) {
-    const bv = -this.sprite.velocity.y/30;
-    const bh = (this.sprite.position.y-240)/240;
+    const bv = -this.sprite.velocity.y / 30;
+    const bh = (this.sprite.position.y - 240) / 240;
     this._input = [
-      pd,  // Pipe distance
-      ph,  // Pipe height
-      bv,  // Bird velocity
-      bh,  // Bird height
-      1,   // Bias
+      pd, // Pipe distance
+      ph, // Pipe height
+      bv, // Bird velocity
+      bh, // Bird height
+      1, // Bias
     ];
     return this._input;
   }
   deepLayer1(input) {
-    return this.weightsDeep.map(ws => Math.tanh(ws.map((w, index) => w*input[index]).reduce((acc, cur) => acc+cur))).concat([1])
+    return this.weightsDeep.map(ws => Math.tanh(ws.map((w, index) => w * input[index]).reduce((acc, cur) => acc + cur))).concat([1]);
   }
   outLayer(input) {
-    return Math.tanh(this.weightsOut.map((w, index) => w*input[index]).reduce((acc, cur) => acc+cur));
+    return Math.tanh(this.weightsOut.map((w, index) => w * input[index]).reduce((acc, cur) => acc + cur));
   }
 }
 
@@ -861,6 +976,7 @@ export function screens(game) {
     highScoresScreen: new HighScoresScreen(game),
     creditsScreen: new CreditsScreen(game),
     trainScreen: new TrainScreen(game),
+    challengeScreen: new ChallengeScreen(game),
   };
 }
 

@@ -33,6 +33,7 @@ export class Game {
     this.weightsVariance = 0.001;
     this.canvasId = "game-box";
     this.sketch = null;
+
     this.p5 = new p5((sketch) => {
       this.sketch = sketch;
       this.sketch.preload = () => {
@@ -45,10 +46,12 @@ export class Game {
           background: this.sketch.loadImage("/assets/background.png"),
           pipe: this.sketch.loadImage("/assets/pipe.png"),
           gameOver: this.sketch.loadImage("/assets/game_over.png"),
+          play: this.sketch.loadImage("/assets/start_button.png"),
+          pause: this.sketch.loadImage("/assets/start_button.png"),
           start: this.sketch.loadImage("/assets/start_button.png"),
           ok: this.sketch.loadImage("/assets/ok_button.png"),
-          legend: this.sketch.loadImage("/assets/ok_button.png"),
-          back: this.sketch.loadImage("/assets/ok_button.png"),
+          legend: this.sketch.loadImage("/assets/legend_button.png"),
+          back: this.sketch.loadImage("/assets/back_button.png"),
           submit: this.sketch.loadImage("/assets/submit_button.png"),
           versus: this.sketch.loadImage("/assets/versus_button.png"),
           train: this.sketch.loadImage("/assets/train_button.png"),
@@ -58,6 +61,8 @@ export class Game {
           scoreboard: this.sketch.loadImage("/assets/score_box.png"),
           getReady: this.sketch.loadImage("/assets/get_ready.png"),
           textBox: this.sketch.loadImage("/assets/box.png"),
+          arrowBack: this.sketch.loadImage("/assets/arrow_back.png"),
+          arrowNext: this.sketch.loadImage("/assets/arrow_next.png"),
           digits: new Array(10).fill(0).map((_, idx) => this.sketch.loadImage(`/assets/${idx}.png`)),
         };
         this.animations = {
@@ -87,15 +92,24 @@ export class Game {
         };
         this.sounds = {
           // https://www.sounds-resource.com/mobile/flappybird/sound/5309/
-          die: this.sketch.loadSound('assets/sfx_die.wav'),
-          hit: this.sketch.loadSound('assets/sfx_hit.wav'),
-          point: this.sketch.loadSound('assets/sfx_point.wav'),
-          swooshing: this.sketch.loadSound('assets/sfx_swooshing.wav'),
-          wing: this.sketch.loadSound('assets/sfx_wing.wav'),
+          die: this.sketch.loadSound('/assets/sfx_die.wav'),
+          hit: this.sketch.loadSound('/assets/sfx_hit.wav'),
+          point: this.sketch.loadSound('/assets/sfx_point.wav'),
+          swooshing: this.sketch.loadSound('/assets/sfx_swooshing.wav'),
+          wing: this.sketch.loadSound('/assets/sfx_wing.wav'),
         };
       };
       this.sketch.setup = () => {
         this.canvas = this.sketch.createCanvas(this.width, this.height);
+        this.canvas.canvas.getContext("2d").imageSmoothingEnabled = false;
+
+        this.maxWidth = 480;
+        this.innerWidth = window.innerWidth>this.maxWidth?this.maxWidth:window.innerWidth;
+        this.scale = this.innerWidth/this.width;
+
+        this.canvas.canvas.style.width = `${this.scale*this.width}px`;
+        this.canvas.canvas.style.height = `${this.scale*this.height}px`;
+
         this.canvas.parent(this.canvasId);
         this.sketch.frameRate(this.framerate);
         this.sketch.textFont(this.font);
@@ -106,6 +120,8 @@ export class Game {
         this.sprites = {
           background: this.sketch.createSprite(this.width / 2, this.height / 2),
           title: this.sketch.createSprite(this.width / 2, 0),
+          play: this.sketch.createSprite(this.width / 2, 0),
+          pause: this.sketch.createSprite(this.width / 2, 0),
           start: this.sketch.createSprite(this.width / 2, 0),
           train: this.sketch.createSprite(this.width / 2, 0),
           highScores: this.sketch.createSprite(this.width / 2, 0),
@@ -117,13 +133,18 @@ export class Game {
           ok: this.sketch.createSprite(this.width / 2, 0),
           legend: this.sketch.createSprite(this.width / 4 * 3, 0),
           back: this.sketch.createSprite(this.width / 4, 0),
+          versus: this.sketch.createSprite(60, 0),
           submit: this.sketch.createSprite(this.width / 2, 0),
           textBox: this.sketch.createSprite(this.width / 2, 0),
           blood: this.sketch.createSprite(0, 0),
+          arrowBack: this.sketch.createSprite(0, 0),
+          arrowNext: this.sketch.createSprite(0, 0),
         };
         this.sprites.background.addImage(this.images.background);
         this.sprites.title.addAnimation("title", this.animations.title);
         this.sprites.title.animation.frameDelay = 10;
+        this.sprites.play.addImage(this.images.start);
+        this.sprites.pause.addImage(this.images.start);
         this.sprites.start.addImage(this.images.start);
         this.sprites.train.addImage(this.images.train);
         this.sprites.highScores.addImage(this.images.highScores);
@@ -136,11 +157,14 @@ export class Game {
         this.sprites.ok.addImage(this.images.ok);
         this.sprites.legend.addImage(this.images.legend);
         this.sprites.back.addImage(this.images.back);
+        this.sprites.versus.addImage(this.images.versus);
         this.sprites.submit.addImage(this.images.submit);
         this.sprites.textBox.addImage(this.images.textBox);
         this.sprites.blood.addAnimation("blood", this.animations.blood);
         this.sprites.blood.animation.frameDelay = 30;
         this.sprites.blood.animation.looping = false;
+        this.sprites.arrowBack.addImage(this.images.arrowBack);
+        this.sprites.arrowNext.addImage(this.images.arrowNext);
 
         this.spriteGroups = {
           foreground: new this.sketch.Group(),
@@ -165,6 +189,14 @@ export class Game {
 
       };
       this.sketch.draw = () => {
+        const w = window.innerWidth>this.maxWidth?this.maxWidth:window.innerWidth;
+        if (w != this.innerWidth) {
+          this.innerWidth = w;
+          this.scale = this.innerWidth/this.width;
+          this.canvas.canvas.style.width = `${this.scale*this.width}px`;
+          this.canvas.canvas.style.height = `${this.scale*this.height}px`;
+        }
+
         this.update(this.sketch);
         this.draw(this.sketch);
       };
