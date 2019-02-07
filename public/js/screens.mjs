@@ -640,8 +640,8 @@ class TrainScreen extends PipesScreen {
           bird.weightsDeep = this.previousBestBird.weightsDeep;
           bird.weightsOut = this.previousBestBird.weightsOut;
         } else {
-          bird.weightsDeep = this.previousBestBird.weightsDeep.map(neuron => neuron.map(w => w + Math.random()<this.mutationProb?randomBm(0, this.game.weightsVariance):0));
-          bird.weightsOut = this.previousBestBird.weightsOut.map(w => w + Math.random<this.mutationProb?randomBm(0, this.game.weightsVariance):0);
+          bird.weightsDeep = this.previousBestBird.weightsDeep.map(neuron => neuron.map(w => w + (Math.random()<this.mutationProb?randomBm(0, this.game.weightsVariance):0)));
+          bird.weightsOut = this.previousBestBird.weightsOut.map(w => w + (Math.random<this.mutationProb?randomBm(0, this.game.weightsVariance):0));
         }
       });
     }
