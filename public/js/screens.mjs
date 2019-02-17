@@ -64,6 +64,7 @@ class BlankScreen {
 class MovingScreen extends BlankScreen {
   init(sketch) {
     super.init(sketch);
+
     this.game.spriteGroups.foreground.toArray().forEach(tile => {
       tile.setVelocity(-this.game.speed, 0);
     });
@@ -78,7 +79,7 @@ class MovingScreen extends BlankScreen {
     });
   }
   draw(sketch) {
-    super.draw();
+    super.draw(sketch);
     sketch.drawSprite(this.game.sprites.background);
     sketch.drawSprites(this.game.spriteGroups.foreground);
   }
@@ -139,7 +140,7 @@ class MenuScreen extends MovingScreen {
     sketch.drawSprite(this.credits.sprite);
 
     sketch.textAlign(sketch.CENTER);
-    sketch.text("V1.0-beta", this.game.width/2, this.game.height*0.95);
+    sketch.text("V1.0", this.game.width / 2, this.game.height * 0.95);
     sketch.textAlign(sketch.LEFT);
 
     this.checkFadeIn(sketch);
@@ -190,9 +191,30 @@ class PipesScreen extends MovingScreen {
     this.showPipes = true;
     this.pipeGap = 160;
     this.pipesCount = 0;
+
+    this.mute = new Button(this.game.sprites.mute);
+    this.mute.setY(this.game.height*0.04);
+    this.unmute = new Button(this.game.sprites.unmute);
+    this.unmute.setY(this.game.height*0.04);
   }
   update(sketch) {
     super.update(sketch);
+
+    if (this.game.muted) {
+      this.unmute.update();
+      this.unmute.clicked(() => {
+        this.game.muted = false;
+        sketch.masterVolume(1)
+        this.unmute.reset();
+      });
+    } else {
+      this.mute.update();
+      this.mute.clicked(() => {
+        this.game.muted = true;
+        sketch.masterVolume(0)
+        this.mute.reset();
+      });
+    }
 
     if (this.showPipes) {
       const slit = 100 + 100 * (1 - Math.tanh(this.pipesCount / 5)); // Slit goes from 200 to 100 with the tanh function
@@ -235,6 +257,12 @@ class PipesScreen extends MovingScreen {
     sketch.drawSprite(this.game.sprites.background);
     sketch.drawSprites(this.game.spriteGroups.pipes);
     sketch.drawSprites(this.game.spriteGroups.foreground);
+
+    if (this.game.muted) {
+      sketch.drawSprite(this.unmute.sprite);
+    } else {
+      sketch.drawSprite(this.mute.sprite);
+    }
   }
   pause() {
     this.game.spriteGroups.pipes.toArray().forEach(pipe => pipe.setVelocity(0, 0));
@@ -318,14 +346,16 @@ class SingleScreen extends PipesScreen {
     this.checkFadeIn(sketch);
   }
   keyPressed() {
+    this.game.sounds.wing.jump(0.03, 0.3);
     this.showPipes = true;
     this.bird.flap(this.flapStrength);
-    this.game.sounds.wing.play();
   }
   mouseClicked() {
-    this.showPipes = true;
-    this.bird.flap(this.flapStrength);
-    this.game.sounds.wing.jump(0.03, 0.3);
+    if (!this.mute.sprite.mouseIsOver && !this.unmute.sprite.mouseIsOver) {
+      this.game.sounds.wing.jump(0.03, 0.3);
+      this.showPipes = true;
+      this.bird.flap(this.flapStrength);
+    }
   }
   killBird() {
     if (!this.bird.dead) {
@@ -434,16 +464,16 @@ class GameOverScreen extends BlankScreen {
         });
         if (this.game.db.user !== undefined) {
           this.game.db.collection(this.game.collection).doc(this.game.db.user.uid).set({
-            uid: this.game.db.user.uid,
-            displayName: this.game.db.user.displayName,
-            score: parseInt(this.best)
-          })
-          .then(function(docRef) {
-            // console.log("Document written with ID: ", docRef.id);
-          })
-          .catch(function(error) {
-            // console.error("Error adding document: ", error);
-          });
+              uid: this.game.db.user.uid,
+              displayName: this.game.db.user.displayName,
+              score: parseInt(this.best)
+            })
+            .then(function(docRef) {
+              // console.log("Document written with ID: ", docRef.id);
+            })
+            .catch(function(error) {
+              // console.error("Error adding document: ", error);
+            });
         } else {
           // Gotta login buddy
         }
@@ -524,12 +554,29 @@ class HighScoresScreen extends InfoScreen {
       // .limit(10)
       .get()
       .then((querySnapshot) => {
-        this.data = querySnapshot.docs.map(doc => doc.data());
+        this.data = querySnapshot.docs
+          .map(doc => doc.data())
+          .map(item => {
+            item.displayName = item.displayName.split(" ")
+              .map((name, idx, arr) => {
+                const length = arr.length
+                if (idx > 0 && idx < length - 1 && name.length > 3) {
+                  name = name.substring(0, 1) + "."
+                }
+                return name;
+              })
+              .join(" ");
+
+            if (item.displayName.length > 20) {
+              item.displayName = item.displayName.substring(0, 20)+".";
+            }
+            return item;
+          });
         this.data.forEach((item, index) => {
           if (this.game.db.user !== undefined && this.game.db.user.uid == item.uid) {
             this.playerPosition = index + 1;
-            this.playerDisplayName = item.displayName;
             this.playerScore = item.score;
+            this.playerDisplayName = item.displayName;
           }
         });
       });
@@ -571,18 +618,23 @@ class CreditsScreen extends InfoScreen {
   }
   draw(sketch) {
     super.draw(sketch);
-    sketch.text(`This is a reproduction of the game`, this.game.width / 11, 150);
-    sketch.text(`"Flappy Bird" with a genetic deep`, this.game.width / 11, 165);
-    sketch.text(`neural network AI, made by Luxedo`, this.game.width / 11, 180);
-    sketch.text(`and Faifos.`, this.game.width / 11, 195);
+    sketch.text(`  This is a reproduction of the`, this.game.width / 10, 160);
+    sketch.text(`game "Flappy Bird" with a genetic`, this.game.width / 10, 175);
+    sketch.text(`deep neural network AI, made by`, this.game.width / 10, 190);
+    sketch.text(`Luxedo and Faifos.`, this.game.width / 10, 205);
 
-    sketch.text(`Thanks to Andrew Tyler for the`, this.game.width / 11, 220);
-    sketch.text(`pixelmix font.`, this.game.width / 11, 235);
-    sketch.text(`Thanks to SuperTVGRFan18496 for`, this.game.width / 11, 255);
-    sketch.text(`the sound assets.`, this.game.width / 11, 270);
+    sketch.text(`  You can play normally or let the`, this.game.width / 10, 230);
+    sketch.text(`birds play for themselves and`, this.game.width / 10, 245);
+    sketch.text(`watch they evolve.`, this.game.width / 10, 260);
 
-    sketch.text(`Thanks to the playtesters ...`, this.game.width / 11, 295);
+    sketch.text(`  Thanks to Andrew Tyler for the`, this.game.width / 10, 285);
+    sketch.text(`font and to SuperTVGRFan18496`, this.game.width / 10, 300);
+    sketch.text(`for the sound assets.`, this.game.width / 10, 315);
 
+    sketch.text(`  Thanks to the playtesters:`, this.game.width / 10, 340);
+    sketch.text(`Raphael Moraes, Pedro Kersten,`, this.game.width / 10, 355);
+    sketch.text(`Ulisses Sato, Lunardo Campos`, this.game.width / 10, 370);
+    sketch.text(`and Geison Cambri.`, this.game.width / 10, 385);
 
     this.checkFadeIn(sketch);
     this.checkFadeOut(sketch);
@@ -599,7 +651,7 @@ class TrainScreen extends PipesScreen {
 
     this.showPipes = false;
     this.frames = 0;
-    this.showPipesAfter = 0 * this.game.fps;
+    this.showPipesAfter = 1 * this.game.fps;
 
     this.legendBoxY = this.game.height / 2;
     this.legendBoxResting = 2 * this.game.height;
@@ -617,10 +669,10 @@ class TrainScreen extends PipesScreen {
     this.page = this.previousScreen != undefined ? this.previousScreen.page : 0;
     this.arrowBack = new Button(this.game.sprites.arrowBack);
     this.arrowBack.setY(this.game.height * 0.78);
-    this.arrowBack.sprite.position.x = this.game.width*0.87;
+    this.arrowBack.sprite.position.x = this.game.width * 0.87;
     this.arrowNext = new Button(this.game.sprites.arrowNext);
     this.arrowNext.setY(this.game.height * 0.78);
-    this.arrowNext.sprite.position.x = this.game.width*0.9;
+    this.arrowNext.sprite.position.x = this.game.width * 0.9;
 
     this.flock = this.game.spriteGroups.flock.toArray().map(sprite => {
       const bird = new SmartBird(sprite);
@@ -640,8 +692,8 @@ class TrainScreen extends PipesScreen {
           bird.weightsDeep = this.previousBestBird.weightsDeep;
           bird.weightsOut = this.previousBestBird.weightsOut;
         } else {
-          bird.weightsDeep = this.previousBestBird.weightsDeep.map(neuron => neuron.map(w => w + (Math.random()<this.mutationProb?randomBm(0, this.game.weightsVariance):0)));
-          bird.weightsOut = this.previousBestBird.weightsOut.map(w => w + (Math.random<this.mutationProb?randomBm(0, this.game.weightsVariance):0));
+          bird.weightsDeep = this.previousBestBird.weightsDeep.map(neuron => neuron.map(w => w + (Math.random() < this.mutationProb ? randomBm(0, this.game.weightsVariance) : 0)));
+          bird.weightsOut = this.previousBestBird.weightsOut.map(w => w + (Math.random < this.mutationProb ? randomBm(0, this.game.weightsVariance) : 0));
         }
       });
     }
@@ -671,12 +723,12 @@ class TrainScreen extends PipesScreen {
     this.arrowBack.update();
     this.arrowBack.clicked(() => {
       this.arrowBack.reset();
-      this.page = this.page===1?0:1;
+      this.page = this.page === 1 ? 0 : 1;
     });
     this.arrowNext.update();
     this.arrowNext.clicked(() => {
       this.arrowNext.reset();
-      this.page = this.page===1?0:1;
+      this.page = this.page === 1 ? 0 : 1;
     });
 
     // this.versus.update();
@@ -738,11 +790,6 @@ class TrainScreen extends PipesScreen {
     if (!this.showLegend) {
       sketch.drawSprite(this.back.sprite);
     }
-
-
-    // if (alive == 1) {
-    //   sketch.drawSprite(this.versus.sprite);
-    // }
 
     if (this.previousBestBird !== undefined) {
       const x = 30;
@@ -816,24 +863,23 @@ class TrainScreen extends PipesScreen {
           sketch.text("Training Birds", this.game.width / 2, 115);
 
           sketch.textAlign(sketch.LEFT);
-          // sketch.text("This screen shows a training //", this.game.width / 8, 145);
-          sketch.text("This screen shows the training", this.game.width / 8, 135);
+          sketch.text("  This screen shows the training", this.game.width / 8, 135);
           sketch.text("of a two layer artificial neural", this.game.width / 8, 150);
           sketch.text("network.", this.game.width / 8, 165);
 
-          sketch.text("This network has 4 inputs and", this.game.width / 8, 185);
+          sketch.text("  This network has 4 inputs and", this.game.width / 8, 185);
           sketch.text("a bias term. The deep layer has", this.game.width / 8, 200);
           sketch.text("3 neurons and another bias. The", this.game.width / 8, 215);
           sketch.text("output is a single neuron.", this.game.width / 8, 230);
 
-          sketch.text("The network is trained with a", this.game.width / 8, 250);
+          sketch.text("  The network is trained with a", this.game.width / 8, 250);
           sketch.text("genetic algorithm. The best bird", this.game.width / 8, 265);
           sketch.text("is allowed to breed and fill 50%", this.game.width / 8, 280);
           sketch.text("of the population. Variance is", this.game.width / 8, 295);
           sketch.text("introduced by altering the", this.game.width / 8, 310);
           sketch.text("neurons randomly.", this.game.width / 8, 325);
 
-          sketch.text("Let the birds train for a while", this.game.width / 8, 345);
+          sketch.text("  Let the birds train for a while", this.game.width / 8, 345);
           sketch.text("and after some generations they", this.game.width / 8, 360);
           sketch.text("will be better than you XD", this.game.width / 8, 375);
 

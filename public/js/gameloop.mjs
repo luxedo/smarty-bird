@@ -34,6 +34,8 @@ export class Game {
     this.canvasId = "game-box";
     this.sketch = null;
 
+    p5.disableFriendlyErrors = true; // disables FES
+
     this.p5 = new p5((sketch) => {
       this.sketch = sketch;
       this.sketch.preload = () => {
@@ -41,6 +43,7 @@ export class Game {
         this.font = this.sketch.loadFont("/assets/pixelmix.ttf");
         this.fontSize = 11;
         this.textColor = "#523747";
+        this.muted = false;
         this.images = {
           foreground: this.sketch.loadImage("/assets/floor.png"),
           background: this.sketch.loadImage("/assets/background.png"),
@@ -63,6 +66,8 @@ export class Game {
           textBox: this.sketch.loadImage("/assets/box.png"),
           arrowBack: this.sketch.loadImage("/assets/arrow_back.png"),
           arrowNext: this.sketch.loadImage("/assets/arrow_next.png"),
+          mute: this.sketch.loadImage("/assets/mute_button.png"),
+          unmute: this.sketch.loadImage("/assets/unmute_button.png"),
           digits: new Array(10).fill(0).map((_, idx) => this.sketch.loadImage(`/assets/${idx}.png`)),
         };
         this.animations = {
@@ -135,6 +140,8 @@ export class Game {
           blood: this.sketch.createSprite(0, 0),
           arrowBack: this.sketch.createSprite(0, 0),
           arrowNext: this.sketch.createSprite(0, 0),
+          mute: this.sketch.createSprite(this.width*0.93, 0),
+          unmute: this.sketch.createSprite(this.width*0.93, 0),
         };
         this.sprites.background.addImage(this.images.background);
         this.sprites.title.addAnimation("title", this.animations.title);
@@ -161,6 +168,8 @@ export class Game {
         this.sprites.blood.animation.looping = false;
         this.sprites.arrowBack.addImage(this.images.arrowBack);
         this.sprites.arrowNext.addImage(this.images.arrowNext);
+        this.sprites.mute.addImage(this.images.mute);
+        this.sprites.unmute.addImage(this.images.unmute);
 
         this.spriteGroups = {
           foreground: new this.sketch.Group(),
